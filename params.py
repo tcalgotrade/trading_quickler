@@ -24,6 +24,9 @@ task_bar = (0,866)
 notepad_pp = (42,1027)
 pycharm = (44, 1082)
 
+# Data file location
+data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
+
 # Cross Val Params
 warm_range = [1]
 train_range = [20]

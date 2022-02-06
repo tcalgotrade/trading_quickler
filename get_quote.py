@@ -73,8 +73,8 @@ def get_one_now(olymp_hr, olymp_min, drag_start, drag_end, task_bar, notepad_pp,
     sec = now().second
 
     # Check if folder for today exists
-    if not os.path.isdir('data/training/' + date + '/'):
-        os.mkdir('data/training/' + date + '/')
+    if not os.path.isdir(pr.data_store_location + date + '/'):
+        os.mkdir(pr.data_store_location + date + '/')
 
     if sec < waittime:
         print('Waiting for enough datapoints before getting one now...')
@@ -84,10 +84,10 @@ def get_one_now(olymp_hr, olymp_min, drag_start, drag_end, task_bar, notepad_pp,
 
     # Save clipboard to pickle file
     data = Tk().clipboard_get()
-    with open('data/training/'+date+'/'+hour_front+hour_back+min_front+min_back, 'wb') as f:
+    with open(pr.data_store_location+date+'/'+hour_front+hour_back+min_front+min_back, 'wb') as f:
         pickle.dump(data, f)
 
-    picklename = 'data/training/'+date+'/'+hour_front+hour_back+min_front+min_back
+    picklename = pr.data_store_location+date+'/'+hour_front+hour_back+min_front+min_back
     return picklename
 # get_one_now(olymp_hr=pr.olymp_hr, olymp_min=pr.olymp_min,drag_start=pr.drag_start, drag_end=pr.drag_end,task_bar=pr.task_bar, notepad_pp=pr.notepad_pp,waittime=0)
 #
@@ -98,8 +98,8 @@ def get_some(olymp_hr, olymp_min, drag_start, drag_end, task_bar, notepad_pp,
     date = datetime.datetime.now().strftime("%d%m%Y")
 
     # Check if folder for today exists
-    if not os.path.isdir('data/training/' + date + '/'):
-        os.mkdir('data/training/' + date + '/')
+    if not os.path.isdir(pr.data_store_location + date + '/'):
+        os.mkdir(pr.data_store_location + date + '/')
 
     for hour in hour_list:
 
@@ -116,7 +116,7 @@ def get_some(olymp_hr, olymp_min, drag_start, drag_end, task_bar, notepad_pp,
 
             # Save clipboard to pickle file
             data = Tk().clipboard_get()
-            with open('data/training/'+date+'/'+hour_front+hour_back+min_front+min_back, 'wb') as f:
+            with open(pr.data_store_location+date+'/'+hour_front+hour_back+min_front+min_back, 'wb') as f:
                 pickle.dump(data, f)
 
     return

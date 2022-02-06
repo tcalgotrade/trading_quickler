@@ -104,10 +104,10 @@ def load(picklename=None, filename=None, isInfo=0):
         return
 
     return df
-# df = load(picklename='data/training/01022022/1530', isInfo=1)
-# df = load(picklename='data/training/03022022/2112', isInfo=1)
+# df = load(picklename=pr.data_store_location+'01022022/1530', isInfo=1)
+df = load(picklename=pr.data_store_location+'03022022/2112', isInfo=1)
 
-def filenames(dates,hours,mins,files,store_folder='data/training/'):
+def filenames(dates,hours,mins,files,store_folder=pr.data_store_location):
     # Create list of file names given a list of date and time + where to store it.
     for date in dates:
         for hr in hours:
@@ -366,9 +366,9 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, which
         print(traceback.format_exc())
         return -1, 0
 
-# df = load(picklename='data/training/04022022/1445', isInfo=1)
-# result = compute_ngrc(df, isDebug=1, isInfo=1, warmup=10, train=10, k=14, test=9, ridge_param=0.1,
-#                       isTrading=0, isTrg=1, which_start=1)
+df = load(picklename=pr.data_store_location+'04022022/1445', isInfo=1)
+result = compute_ngrc(df, isDebug=1, isInfo=1, warmup=10, train=10, k=14, test=9, ridge_param=0.1,
+                      isTrading=0, isTrg=1, which_start=1)
 
 
 def cross_val_ngrc(file, warm, train, delay, test, ridge, threshold_test_nrmse, which_start):
@@ -391,7 +391,7 @@ def cross_val_ngrc(file, warm, train, delay, test, ridge, threshold_test_nrmse, 
                       np.around(result[1], 4), np.around(result[2], 4), threshold_test_nrmse)
 
             # Save cross val result
-            with open('data/training/' + date + '/cross_val/'+ str(train) + '-' + str(delay) + '-' + str(test) + '-' + str(warm) + '-' + str(ridge) + '-' + str(round(result[2],2))+ '-' + file[-4:] ,'wb') as f:
+            with open(pr.data_store_location + date + '/cross_val/'+ str(train) + '-' + str(delay) + '-' + str(test) + '-' + str(warm) + '-' + str(ridge) + '-' + str(round(result[2],2))+ '-' + file[-4:] ,'wb') as f:
                 pickle.dump(param, f)
 
             # print('Params -', 'warm:', warm, 'trg:', train, 'k:', delay, 'test:', test, 'ridge:', ridge,
@@ -422,12 +422,12 @@ def cross_val_trading(t):
     nowtime_build_last_t_hour , nowtime_build_last_t_min = gq.build_dataset_last_t_minutes(t=t, isTrading=1)
 
     # Check if folder for today exists
-    if not os.path.isdir('data/training/' + now.strftime("%d%m%Y") + '/'):
-        os.mkdir('data/training/' + now.strftime("%d%m%Y") + '/')
+    if not os.path.isdir(pr.data_store_location + now.strftime("%d%m%Y") + '/'):
+        os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/')
 
     # Check if cross val dir created. if not, create it.
-    if not os.path.isdir('data/training/' + now.strftime("%d%m%Y") + '/cross_val'):
-        os.mkdir('data/training/' + now.strftime("%d%m%Y") + '/cross_val')
+    if not os.path.isdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val'):
+        os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val')
 
     # Build file names for last t minutes of data; Make sure we use same time as build_dataset_last_t_minutes
     files = []
@@ -460,7 +460,7 @@ def cross_val_trading(t):
     print('# of combinations:', len(bag_of_params))
 
     # Remove contents from last cross_val. We start anew each cross val during trading.
-    files = glob.glob('data/training/'+now.strftime("%d%m%Y")+'/cross_val/*')
+    files = glob.glob(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val/*')
     for f in files:
         os.remove(f)
 
@@ -476,7 +476,7 @@ def cross_val_trading(t):
         count = 0
         pattern = str(i[0])+'-'+str(i[1])+"-"
         # For each pair, calc count within cross_val folder
-        for file in os.listdir('data/training/'+now.strftime("%d%m%Y")+'/cross_val'):
+        for file in os.listdir(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val'):
             if re.match(pattern=pattern, string=file):
                 count += 1
                 # Get NRMSE & check if sensible. Rounding can cause value to be 0.7 or 0.45.
@@ -503,7 +503,7 @@ def cross_val_trading(t):
     print('Cross Val took this amount of time:', datetime.datetime.now()-start_time)
     print('Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
-    picklename = 'data/training/'+now.strftime("%d%m%Y")+'/'+nowtime_build_last_t_hour+nowtime_build_last_t_min
+    picklename = pr.data_store_location+now.strftime("%d%m%Y")+'/'+nowtime_build_last_t_hour+nowtime_build_last_t_min
     return picklename
 
 def cross_val_manual():
