@@ -7,6 +7,7 @@ import time
 import multiprocessing
 import pickle
 import params as pr
+import utility as ut
 import logging
 
 def execute(signal):
@@ -43,15 +44,13 @@ def end(cycle, trade):
 def checks(trade_params=None, df=None, start1_time_second= None, start2_time_second = None,
            day_change_chk=False, trade_start_chk=False, cycle1_warmup_chk=False, params_chk=False, min_mismatch_chk=False, sec_mismatch_chk=False,
            timed_start1_chk=False, timed_start2_chk=False):
-
-
     """ All checks leading up to trade execution checks."""
 
     if day_change_chk:
         # Check if current time is 2359. If so, break and stop trading.
         # There is currently no way to change date via PyAutoGUI.
         if datetime.datetime.now().hour == 23 and datetime.datetime.now().minute == 59:
-            print('We have entered a new day.')
+            print('We are entering a new day in one minute.')
             return 1
 
     # Pop a prompt to make sure manual setup is good.
@@ -64,7 +63,7 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
         print('ridge_range:',pr.ridge_range,'\nthreshold_test_nrmse:',pr.threshold_test_nrmse, '\n')
         print('Trading Params:')
         print('total_trade:', pr.total_trade,'\nlookback_t:', pr.lookback_t,'\nadjusted_start1_time_second:', pr.adjusted_start1_time_second)
-        print('test_points:',pr.test_points,'\npred_delta_threshold:',pr.pred_delta_threshold,'\npercent_correct_dir:',pr.percent_correct_dir)
+        print('test_points:',pr.test_points,'\npred_delta_threshold:',pr.pred_delta_threshold)
         print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds, '\ntarget_start1_time_second:',pr.target_start1_time_second,'\ntarget_start2_time_second:', pr.target_start2_time_second, '\n')
         if setup_check == 'Cancel':
             print('Cancelled by user.')
@@ -78,7 +77,7 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
 
     if params_chk and trade_params is not None:
         # Check if params are still default, if so, skip one iteration.
-        if trade_params == [[0, 0, 0, 1.0], [0, 0, 0, 1.0]]:
+        if trade_params == [0, 0, 1.]:
             print('Params still default. Go on to next iteration.')
             print('/****************************************************************************/\n')
             return 4
@@ -122,22 +121,17 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
     return
 
 
-def trade_execution(cycle, trade, which_start):
+def trade_execution(cycle, trade):
 
-    picklename = an.cross_val_trading(t=pr.lookback_t)
-
-    # Open best param pickle files
-    with open('params_current_trading', 'rb') as f:
-        params = pickle.load(f)
-    print('We have these params to use:', params)
+    best_param, picklename, get_one_second = an.cross_val_trading(t=pr.lookback_t)
 
     # Check if params are still default, if so, skip one iteration.
-    if checks(trade_params=params, params_chk=True) == 4:
+    if checks(trade_params=best_param, params_chk=True) == 4:
         cycle += 1
         return 1 , cycle, trade
 
     # Load dataframe
-    df = an.load(picklename=picklename, isInfo=0)
+    df = an.load(picklename=picklename, seconds=get_one_second)
     print('Loaded pickle for prediction for trading ... :', picklename)
     print('Dataframe Statistics:')
     print('Time @ first row:', df['time'].iloc[0])
@@ -155,25 +149,24 @@ def trade_execution(cycle, trade, which_start):
     # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
     results = []
     for test_point in pr.test_points:
-        results.append(an.compute_ngrc(df, isDebug=0, isInfo=0,
-                                       warmup=0, train=params[1][0], k=params[1][1], test=test_point,
-                                       ridge_param=pr.ridge_range[0], which_start=which_start,
-                                       isTrading=1, isTrg=0))
+        results.append(
+            an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=0, train=best_param[0], k=best_param[1], test=test_point,
+                            ridge_param=pr.ridge_range[0], isTrg=0, isTrading=1))
     print('Time @ compute complete : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
     # Consolidate results for trade execution.
-    all_pred_delta = []
+    test_predictions_quote_delta = []
     for result in results:
-        all_pred_delta.append(round(result[1],2))
+        test_predictions_quote_delta.append(round(result[1],2))
 
     action_sum = 0
     for result in results:
         action_sum += result[0]
 
     # Calc basic stats of delta of price prediction.
-    mean_pred_delta = np.mean(all_pred_delta)
-    stdev_pred_delta = np.std(all_pred_delta)
-    print('All results pred delta:', all_pred_delta)
+    mean_pred_delta = np.mean(test_predictions_quote_delta)
+    stdev_pred_delta = np.std(test_predictions_quote_delta)
+    print('All results pred delta:', test_predictions_quote_delta)
     print('Average of all results pred delta:', mean_pred_delta)
     print('Std Dev of all results pred delta:', stdev_pred_delta)
 
@@ -183,42 +176,24 @@ def trade_execution(cycle, trade, which_start):
         # Check if mean of delta is above threshold.
         if abs(mean_pred_delta) > pr.pred_delta_threshold and min_mismatch != 1:
             print('Threshold: YES Minute mismatch: NO')
-            if params[0][2] >= pr.lookback_t * len(pr.test_range) * len(pr.warm_range) * pr.percent_correct_dir:
-                print('Percent_correct_dir: YES')
-                execute(signal=results[0][0])
-                # Check if agreement is no action
-                if results[0][0] != -1:
-                    trade += 1
-                    if trade == pr.total_trade:
-                        end(cycle,trade)
-                        return -1, cycle, trade
-            else:
-                print('No execution - Percent_correct_dir: NO')
+            execute(signal=results[0][0])
+            # Check if agreement is no action
+            if results[0][0] != -1:
+                trade += 1
+                time.sleep(3)
+                if trade == pr.total_trade:
+                    end(cycle,trade)
+                    return -1, cycle, trade
+
         else:
             print('No execution - Threshold: NO or Minute mismatch: YES')
     else:
         print('No execution - Direction agreement: NO ')
+
+    time.sleep(5)
     cycle += 1
     print('/****************************************************************************/\n')
     return 0 , cycle, trade
-
-
-def simple_sched_start(year, month, day, hour, minute,sec=0):
-    # https://is.gd/Lb9tlf
-    target_time = datetime.datetime(year, month, day, hour, minute,sec)
-    while datetime.datetime.now() < target_time:
-        time.sleep(10)
-    print('Target time:', year,':', month,':', day,':', hour,':', minute, 'Commencing trading now...\n')
-    print('/****************************************************************************/\n')
-    return
-
-
-def date_changer():
-    pag.moveTo(x=pr.drag_start[0], y=pr.drag_start[1])
-    pag.typewrite(['home'], interval=0.05)
-    pag.click(x=pr.olymp_date[0], y=pr.olymp_date[1])
-    pag.click(x=pr.olymp_day_7[0], y=pr.olymp_day_7[1])
-    return
 
 
 if __name__ == '__main__':
@@ -234,35 +209,18 @@ if __name__ == '__main__':
 
         # Some checks to make sure we're good before trading.
         if checks(day_change_chk=True) == 1:
-            time.sleep(4*60)
-            date_changer()
+            # Sleep for few minutes for data to build up.
+            # If we do not sleep, will have issues with hour_min_to_list_t
+            time.sleep((pr.lookback_t+1)*60)
+            # Change date with PyAutoGUI
+            ut.date_changer()
         if cycle == 1:
             if checks(cycle, trade_start_chk=True) == 2:
                 break
-            checks(timed_start1_chk=True, start1_time_second=pr.adjusted_start1_time_second)
             checks(cycle1_warmup_chk=True)
 
         # We time our getting of data, do cross val do prediction and execute trade if within NRMSE
-        # Start1 @ target_start1_time_second
-        if start_flag == 1:
-            checks(timed_start1_chk=True, start1_time_second=pr.adjusted_start1_time_second)
-        pr.which_start[0] = 1 ; start_flag = 2
-
-        flow_control = trade_execution(cycle=cycle, trade=trade, which_start=pr.which_start[0])
-
-        if flow_control[0] == -1:
-            break
-        if flow_control[0] == 1 or flow_control[0] == 0:
-            cycle = flow_control[1]
-            trade = flow_control[2]
-
-        # Start2 @ target_start2_time_second
-        print('Cycle # : ', cycle) ; print('Trade executed: ', trade, '\n')
-        if start_flag == 2:
-            checks(timed_start2_chk=True, start2_time_second=pr.adjusted_start2_time_second)
-        pr.which_start[0] = 2 ; start_flag = 1
-
-        flow_control = trade_execution(cycle=cycle, trade=trade, which_start=pr.which_start[0])
+        flow_control = trade_execution(cycle=cycle, trade=trade)
 
         if flow_control[0] == -1:
             break

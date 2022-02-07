@@ -15,6 +15,7 @@ import glob
 import tqdm
 import traceback
 import params as pr
+import utility as ut
 import logging as lg
 
 
@@ -26,36 +27,51 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 warnings.filterwarnings('ignore')
 
 
-def load(picklename=None, filename=None, isInfo=0):
+def load(picklename, seconds, isDebug=False):
 
-    # Load via .txt and pickle.
+    # Build and process a dataframe containing t minutes of quote history data.
+    # We assume pickle files of past t minutes already existed. This should be handled by main trading loop.
     try:
-        if filename is not None:
-            df = pd.read_csv(filename, sep=" ", header=None)
-        if picklename is not None:
-            unpickled = pd.read_pickle(picklename)
-            df = pd.DataFrame([x.split(' ') for x in unpickled.split('\n')])
+        # Get hour and min from picklename.
+        hour = int(picklename[-4:][0:2])
+        minute = int(picklename[-4:][2:4])
+        hours_list, minutes_list = ut.hour_min_to_list_t(hour, minute, seconds, t=pr.lookback_t)
 
-        # Check if there's 2 columns
-        row, col = df.shape
-        if col == 2:
-            df = df.iloc[:, :-1]
+        # We gp through the timings and build up time series of minutes = lookback_t
+        unpickled = ''
+        hour_front = ut.process_current_datetime(hour=hours_list[0])[0]
+        hour_back = ut.process_current_datetime(hour=hours_list[0])[1]
+        for minute in minutes_list[0]:
+            minute_front = ut.process_current_datetime(min=minute)[2]
+            minute_back = ut.process_current_datetime(min=minute)[3]
+            current_iter_picklename = pr.data_store_location+datetime.datetime.now().strftime("%d%m%Y")+'/'+hour_front+hour_back+minute_front+minute_back
+            unpickled += pd.read_pickle(current_iter_picklename)
 
-        # We don't want first 65 rows.
-        df = df.iloc[66:, :1]
-        # Remove last 2 rows.
-        df = df.iloc[:-2, :1]
+        if len(hours_list) == 2:
+            # Front
+            hour_front = ut.process_current_datetime(hour=hours_list[1])[0]
+            hour_back = ut.process_current_datetime(hour=hours_list[1])[1]
+            for minute in minutes_list[1]:
+                minute_front = ut.process_current_datetime(min=minute)[2]
+                minute_back = ut.process_current_datetime(min=minute)[3]
+                current_iter_picklename = pr.data_store_location+datetime.datetime.now().strftime("%d%m%Y")+'/'+hour_front+hour_back+minute_front+minute_back
+                unpickled += pd.read_pickle(current_iter_picklename)
 
-        # Check if first and last row is valid. If not, we drop it. We want first row to be time. Last row to be quote price.
-        rows_to_check = 1
-        for row in range(0, rows_to_check):
+
+
+        # Split it into a proper dataframe
+        df = pd.DataFrame([x.split(' ') for x in unpickled.split('\n')])
+        # Check if first and last row is valid. If not, we drop it.
+        # We want first row to be time. Last row to be quote price.
+        # In event that get_quote first row is not time, drop first row
+        # Check for 2 rows
+        for i in range(0,3):
+            if len(df[0].iloc[0]) != 12 or ':' not in df[0].iloc[0]:
+                df.drop(df.head(1).index, inplace=True)
             # In event that get_quote last row is time, drop last row
-            if len(df[0].iloc[-1]) != 7:
+            if len(df[0].iloc[-1]) != 7 or '.' not in df[0].iloc[-1]:
                 df.drop(df.tail(1).index, inplace=True)
 
-            # In event that get_quote first row is not time, drop first row
-            if ':' not in df[0].iloc[0]:
-                df.drop(df.head(1).index, inplace=True)
 
         # Separate odd and even rows, https://is.gd/w91SzO
         # Not actually used. Left here for future ref.
@@ -82,8 +98,8 @@ def load(picklename=None, filename=None, isInfo=0):
         # Rearrange cols for tidiness, https://is.gd/QNzlbu
         df = df[['time', 'time_diff', 'quote', 'quote_diff']]
 
-        # Drop of 1st row as it contains NaN
-        # df = df.iloc[1:, :]
+        # Drop of 1st row (oldest data point) as it contains NaN
+        df = df.iloc[1:, :]
 
         # Reset index numbers
         df.reset_index(inplace=True)
@@ -91,8 +107,8 @@ def load(picklename=None, filename=None, isInfo=0):
         # Delete unwanted "index" col
         df.drop(['index'], inplace=True, axis=1)
 
-        if isInfo:
-            print('Data : \n', df.head(n=200), '\n')
+        if isDebug:
+            print('Data : \n', df, '\n')
             print('Shape of dataframe: \n', df.shape)
             print('Max time diff: ', df['time_diff'].max())
             print('Min time diff: ', df['time_diff'].min())
@@ -103,47 +119,27 @@ def load(picklename=None, filename=None, isInfo=0):
             print('Avg quote: ', df['quote'].mean())
             print('Std Dev quote: ', df['quote'].std())
             print('Types of our cols: \n', df.dtypes, '\n')
+
     except Exception:
         print('File loading threw an exception: ... ')
         print(traceback.format_exc())
         return
 
     return df
-# df = load(picklename=pr.data_store_location+'01022022/1530', isInfo=1)
-# df = load(picklename=pr.data_store_location+'07022022/1204', isInfo=0)
 
-def filenames(dates,hours,mins,files,store_folder=pr.data_store_location):
-    # Create list of file names given a list of date and time + where to store it.
-    for date in dates:
-        for hr in hours:
-            if len(str(hr)) == 1:
-                hr_front = '0'
-                hr_back = str(hr)
-            else:
-                hr_front = str(hr)[0]
-                hr_back = str(hr)[1]
-            for min in mins:
-                if len(str(min)) == 1:
-                    min_front = '0'
-                    min_back = str(min)
-                else:
-                    min_front = str(min)[0]
-                    min_back = str(min)[1]
-                files.append(store_folder+str(date)+'/'+hr_front+hr_back+min_front+min_back)
-    return files
 
-def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, which_start, isTrg=0, isTrading=0):
+def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg=0, isTrading=0):
 
     # total variance of data
     total_var = np.var(df['quote'])
 
+    # Get rows and cols of dataframe
+    rows, cols = df.shape
+
     # time step
-    dt = np.round(df['time_diff'].mean().total_seconds(), 2)
+    dt = np.round(df['time_diff'].dt.total_seconds().mean(),2)
     # units of time to warm up NVAR. need to have warmup_pts >= 1, in seconds
-    if which_start == 1:
-        warmup = (pr.target_start1_time_second - warmup) - (train+test) # Computing on warmup points on minute prior
-    if which_start == 2:
-        warmup = (pr.target_start2_time_second - warmup) - (train+test) # Computing on warmup points on current minute.
+    warmup = warmup
     # units of time to train for, in seconds
     traintime = train
     # units of time to test for, in seconds
@@ -152,27 +148,24 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, which
     ridge_param = ridge_param
 
     # discrete-time versions of the times defined above
-    warmup_pts = 0 ; traintime_pts = 0 ; warmtrain_pts = 0 ; maxtime = 0 ; testtime_pts = 0 ; maxtime_pts = 0
     if isTrg:
-        warmup_pts = round(warmup / dt)
         traintime_pts = round(traintime / dt)
-        warmtrain_pts = warmup_pts + traintime_pts
-        maxtime = warmup + traintime + testtime
         testtime_pts = round(testtime / dt)
-        maxtime_pts = round(maxtime / dt)
+        warmup_pts = rows - (traintime_pts+testtime_pts)
+        warmtrain_pts = warmup_pts + traintime_pts
+        maxtime_pts = warmtrain_pts + testtime_pts
 
     if isTrading:
         # When trading, we do not need test data.
-        total_rows = df.shape[0] # Number of 'dt' in dataframe
         traintime_pts = round(traintime / dt) # Number of 'dt' to trg on
-        warmup_pts = total_rows - traintime_pts # Number of 'dt' to shift so we trg on latest data we have, We ignore param 'warm'
-        warmtrain_pts = warmup_pts + traintime_pts # Number of 'dt' sum of warm and train
         testtime_pts = round(testtime / dt) # Number of 'dt' to predict ahead
+        warmup_pts = rows - traintime_pts # Number of 'dt' to shift so we trg on latest data we have, We ignore param 'warm'
+        warmtrain_pts = warmup_pts + traintime_pts # Number of 'dt' sum of warm and train
         maxtime_pts = warmtrain_pts # Number of dt sum of warm and train, less test because we're trading now
 
 
     # input dimension
-    d = 1
+    d = 2
     # number of time delay taps
     k = k
     # size of linear part of feature vector
@@ -202,22 +195,18 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, which
     Is index 0 suppose to be oldest or newest time in data? : oldest
     """
     try:
+        consolidated_array = np.array([df['quote'].to_numpy(),df['quote_diff'].to_numpy()])
         for delay in range(k):
             for j in range(delay, maxtime_pts):
-                x[d * delay: d * (delay + 1), j] = df['quote'].iloc[j - delay]
+                x[d * delay: d * (delay + 1), j] = consolidated_array[:, j-delay]
     except Exception:
         print('Something went wrong when computing : x ')
-        print('Warm:', warmup, 'Train:', train,  'Delay', k,  'Test', test,  'Ridge', ridge_param,  'Which_Start', which_start)
+        print('Warm:', warmup, 'Train:', train,  'Delay', k,  'Test', test,  'Ridge', ridge_param)
+        print('x shape:',x.shape)
         print('Dataframe shape', df.shape)
-        print('Quote series:', df['quote'])
-        # print(traceback.format_exc())
+        print(traceback.format_exc())
         return -1, 0
 
-    """
-    create an array to hold the full feature vector for training time
-    (use ones so the constant term is already 1)
-    """
-    out_train = np.ones((dtot, traintime_pts))
 
     """
     Fill in the non-linear part
@@ -227,6 +216,12 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, which
         >> generating quadratric terms 
     """
     try:
+        """
+        create an array to hold the full feature vector for training time
+        (use ones so the constant term is already 1)
+        """
+        out_train = np.ones((dtot, traintime_pts))
+
         """
         Copy over the linear part (shift over by one to account for constant)
         1st row is all ones , for bias term
@@ -243,9 +238,11 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, which
                 cnt += 1
     except Exception:
         print('Something went wrong when computing : out_train ')
-        print('Warm:', warmup, 'Train:', train,  'Delay', k,  'Test', test,  'Ridge', ridge_param,  'Which_Start', which_start)
+        print('Warm:', warmup, 'Train:', train,  'Delay', k,  'Test', test,  'Ridge', ridge_param)
+        print('out_train:',out_train.shape)
         print('Dataframe shape', df.shape)
-        # print(traceback.format_exc())
+        print('dtot , traintime_pts:', dtot, traintime_pts)
+        print(traceback.format_exc())
         return -1, 0
 
 
@@ -260,9 +257,9 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, which
                 @ np.linalg.pinv(out_train[:, :] @ out_train[:, :].T + ridge_param * np.identity(dtot))
     except Exception:
         print('Something went wrong when computing : W_out ')
-        print('Warm:', warmup, 'Train:', train,  'Delay', k,  'Test', test,  'Ridge', ridge_param,  'Which_Start', which_start)
+        print('Warm:', warmup, 'Train:', train,  'Delay', k,  'Test', test,  'Ridge', ridge_param)
         print('Dataframe shape', df.shape)
-        # print(traceback.format_exc())
+        print(traceback.format_exc())
         return -1, 0
 
     # apply W_out to the training feature vector to get the training output
@@ -301,12 +298,15 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, which
             x_test[0:d, j + 1] = x_test[0:d, j] + W_out @ out_test[:]
     except Exception:
         print('Something went wrong when computing : x_test')
+        print('x_test shape:',x_test.shape)
+        print('warmtrain_pts:',warmtrain_pts)
         print(traceback.format_exc())
         return -1, 0
 
     try:
         if isTrg:
-            # Calculate NRMSE between true and prediction
+            # Calculate NRMSE between ground_truth and test_predictions.
+            # Only makes sense if we are training/cross val
             test_nrmse = np.sqrt(np.mean(
                 (x[0:d, warmtrain_pts - 1:warmtrain_pts + testtime_pts - 1] - x_test[0:d, 0:testtime_pts]) ** 2) / total_var)
         else:
@@ -316,90 +316,121 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, which
         return -1, 0
 
     try:
-        # Pull out relevant data points for true and prediction + compute change between 1st pt and last pt.
-        true = x[0:d, warmtrain_pts - 1:warmtrain_pts + testtime_pts - 1]
-        pred = x_test[0:d, 0:testtime_pts]
-        test_delta = true[0, -1] - true[0, 0]
-        pred_delta = pred[0, -1] - pred[0, 0]
+        # Pull out relevant data points for ground and test prediction + compute relevant items between 1st pt and last pt.
+        # We distinguish whether we're cross val or trading.
+        # When cross val: we're interested in test predictions instead of trg predictions.
+        # When trading, we're just looking at the test predictions, i.e. predicting ahead to future and output actions to take.
+        if isTrg:
+            ground_truth = x[0:d, warmtrain_pts - 1:warmtrain_pts + testtime_pts - 1]
+            test_predictions = x_test[0:d, 0:testtime_pts]
+            # We compute price diff between then and now
+            ground_truth_quote_delta = ground_truth[0, -1] - ground_truth[0, 0]
+            test_predictions_quote_delta = test_predictions[0, -1] - test_predictions[0, 0]
+            # We sum up price diffs to find out whether we will be up or down at desired test time.
+            ground_truth_quotediff_sum = np.sum(ground_truth[1,1:])
+            test_predictions_quotediff_sum = np.sum(test_predictions[1,1:])
+        if isTrading:
+            test_predictions = x_test[0:d, 0:testtime_pts]
+            # We compute price diff between then and now
+            test_predictions_quote_delta = test_predictions[0, -1] - test_predictions[0, 0]
+            # We sum up price diffs to find out whether we will be up or down at desired test time.
+            test_predictions_quotediff_sum = np.sum(test_predictions[1,1:])
 
         if isDebug:
-            print('warm:',warmup)
-            print('train:',train)
-            print('delay:',k)
-            print('test:',test)
-            print('ridge:',ridge_param)
-            print('which_start:',which_start)
-            print('isTrg:',isTrg)
-            print('isTrading:',isTrading)
+            print('warm:', warmup)
+            print('train:', train)
+            print('delay:', k)
+            print('test:', test)
+            print('ridge:', ridge_param)
+            print('isTrg:', isTrg)
+            print('isTrading:', isTrading,'\n')
+            print('Dataframe:\n',df,'\n')
             print('x : \n', x, '\n')
+            print('x shape:',x.shape, '\n')
             print('out_train: \n', out_train, '\n')
             print('W_out: \n', W_out, '\n')
             print('x_predict: \n', x_predict, '\n')
+            print('x_predict shape:', x_predict.shape,'\n')
             print('x_test: \n', x_test, '\n')
-            print('Test Data: \n', true)
-            print('Prediction : \n', pred, '\n')
+            print('x_test shape:', x_test.shape,'\n')
+            print('ground_truth: \n', ground_truth)
+            print('test_predictions: \n', test_predictions, '\n')
+            print('Shape of ground_truth:', ground_truth.shape)
+            print('Shape of test_predictions:', test_predictions.shape)
+            print('ground_truth_quote_delta:', ground_truth_quote_delta)
+            print('test_predictions_quote_delta:', test_predictions_quote_delta)
+            print('ground_truth_quotediff_sum:', ground_truth_quotediff_sum)
+            print('test_predictions_quotediff_sum:', test_predictions_quotediff_sum)
 
         if isInfo:
             if isTrg:
                 print('Avg Time Diff : ', df['time_diff'].mean().total_seconds())
-                print('training nrmse: ' + str(trg_nrmse))
-                print('test nrmse: ' + str(test_nrmse))
-                print('Test Data Delta : ', test_delta)
-                print('Prediction Delta : ', pred_delta, '\n')
+                print('training nrmse: ' , trg_nrmse)
+                print('test nrmse: ' , test_nrmse)
+                print('Shape of ground_truth:', ground_truth.shape)
+                print('Shape of test_predictions:', test_predictions.shape)
+                print('ground_truth: \n', ground_truth)
+                print('test_predictions: \n', test_predictions, '\n')
+                print('ground_truth_quote_delta:', ground_truth_quote_delta)
+                print('test_predictions_quote_delta:', test_predictions_quote_delta)
+                print('ground_truth_quotediff_sum:', ground_truth_quotediff_sum)
+                print('test_predictions_quotediff_sum:', test_predictions_quotediff_sum)
             if isTrading:
-                print('Avg Time Diff : ', df['time_diff'].mean().total_seconds())
-                print('training nrmse: ' + str(trg_nrmse))
-                print('Prediction Delta : ', pred_delta, '\n')
+                print('training nrmse: ' , trg_nrmse)
+                print('Shape of test_predictions:', test_predictions.shape)
+                print('test_predictions: \n', test_predictions, '\n')
+                print('test_predictions_quote_delta:', test_predictions_quote_delta)
+                print('test_predictions_quotediff_sum:', test_predictions_quotediff_sum)
 
+        # Return actions to do. 0 is buy down. 1 is buy up. -1 is do nothing.
         if isTrg:
-            pred_delta_tolr = 0
-            if test_delta < 0 and pred_delta < 0:
-                return 0, trg_nrmse, test_nrmse
-            if test_delta > 0 and pred_delta > 0:
-                return 1, trg_nrmse, test_nrmse
+            if ground_truth_quote_delta < 0 and test_predictions_quote_delta < 0 \
+                    and ground_truth_quotediff_sum < 0 and test_predictions_quotediff_sum < 0:
+                return 0, trg_nrmse, test_nrmse, ground_truth_quote_delta, test_predictions_quote_delta, \
+                       ground_truth_quotediff_sum, test_predictions_quotediff_sum
+            if ground_truth_quote_delta > 0 and test_predictions_quote_delta > 0 \
+                    and ground_truth_quotediff_sum > 0 and test_predictions_quotediff_sum > 0:
+                return 1, trg_nrmse, test_nrmse, ground_truth_quote_delta, test_predictions_quote_delta, \
+                       ground_truth_quotediff_sum, test_predictions_quotediff_sum
             else:
-                return -1, trg_nrmse, test_nrmse
+                return -1, trg_nrmse, test_nrmse, ground_truth_quote_delta, test_predictions_quote_delta, \
+                       ground_truth_quotediff_sum, test_predictions_quotediff_sum
 
         if isTrading:
-            if pred_delta < 0:
-                return 0, pred_delta
-            if pred_delta > 0:
-                return 1, pred_delta
+            if test_predictions_quote_delta < 0 and test_predictions_quotediff_sum < 0:
+                return 0, trg_nrmse, test_predictions_quote_delta, test_predictions_quotediff_sum
+            if test_predictions_quote_delta > 0 and test_predictions_quotediff_sum > 0:
+                return 1, trg_nrmse, test_predictions_quote_delta, test_predictions_quotediff_sum
             else:
-                return -1, pred_delta
+                return 1, trg_nrmse, test_predictions_quote_delta, test_predictions_quotediff_sum
+
     except Exception:
         print(traceback.format_exc())
         return -1, 0
-# df = load(picklename=pr.data_store_location+'04022022/1445', isInfo=1)
-# result = compute_ngrc(df, isDebug=1, isInfo=1, warmup=10, train=10, k=14, test=9, ridge_param=0.1,
-#                       isTrading=0, isTrg=1, which_start=1)
 
 
-def cross_val_ngrc(file, warm, train, delay, test, ridge, threshold_test_nrmse, which_start):
+def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, threshold_test_nrmse):
 
     # Load dataframe from pickle
-    df = load(picklename=file)
+    df = load(picklename=picklename, seconds=seconds)
 
     # Get current date
     date = datetime.datetime.now().strftime("%d%m%Y")
 
     # Compute NG-RC result and normalized RMSE
     result = compute_ngrc(df, isDebug=0, isInfo=0, warmup=warm, train=train, k=delay, test=test, ridge_param=ridge,
-                          which_start=which_start, isTrading=0, isTrg=1)
+                          isTrg=1, isTrading=0)
 
     # When result is to take an action, check if within NRMSE threshold. If so, we save param set to pickle.
     if result[0] == 1 or result[0] == 0:
         if result[2] < threshold_test_nrmse:
 
-            param = (file, warm, train, delay, test, ridge,
+            param = (picklename, seconds, warm, train, delay, test, ridge,
                       np.around(result[1], 4), np.around(result[2], 4), threshold_test_nrmse)
 
             # Save cross val result
-            with open(pr.data_store_location + date + '/cross_val/'+ str(train) + '-' + str(delay) + '-' + str(test) + '-' + str(warm) + '-' + str(ridge) + '-' + str(round(result[2],2))+ '-' + file[-4:] ,'wb') as f:
+            with open(pr.data_store_location + date + '/cross_val/'+ str(train) + '-' + str(delay) + '-' + str(test) + '-' + str(warm) + '-' + str(ridge) + '-' + str(round(result[2],2))+ '-' + picklename[-4:] ,'wb') as f:
                 pickle.dump(param, f)
-
-            # print('Params -', 'warm:', warm, 'trg:', train, 'k:', delay, 'test:', test, 'ridge:', ridge,
-            #       'trg_nrmse:', np.around(result[1], 4), 'test nrmse:', np.around(result[2], 4))
 
     return
 
@@ -418,12 +449,13 @@ def cross_val_multiproc(params):
 
 
 def cross_val_trading(t):
+
     # Get date & time
     start_time = now = datetime.datetime.now()
     print('Time @ Cross Val start : ', start_time.strftime("%H:%M:%S.%f"))
 
-    # Build dataset
-    nowtime_build_last_t_hour , nowtime_build_last_t_min = gq.build_dataset_last_t_minutes(t=t, isTrading=1)
+    # We have already warmed up prior to cycle start. So we now get one quote at current time.
+    picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
 
     # Check if folder for today exists
     if not os.path.isdir(pr.data_store_location + now.strftime("%d%m%Y") + '/'):
@@ -433,34 +465,8 @@ def cross_val_trading(t):
     if not os.path.isdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val'):
         os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val')
 
-    # Build file names for last t minutes of data; Make sure we use same time as build_dataset_last_t_minutes
-    files = []
-    hour = int(nowtime_build_last_t_hour)
-    min = int(nowtime_build_last_t_min)+1
-
-    # To use cross_val_trading to look back at a particular minute and lookback_t before it.
-    if pr.force_manual_cross_val_trading:
-        hour = pr.forced_hour
-        min = pr.forced_min
-
-    if t > min:
-        hours = [hour]
-        mins = range(0,min)
-        files = filenames(dates=[now.strftime("%d%m%Y")], hours=hours, mins=mins, files=files)
-        # Check is we are 00 hours.
-        if hour - 1 < 0:
-            hours = [23]
-        else:
-            hours = [hour-1]
-        mins = range(60-(t-(min)),60)
-        files = filenames(dates=[now.strftime("%d%m%Y")], hours=hours, mins=mins, files=files)
-    if t <= min:
-        hours = [hour]
-        mins = range((min)-t,min)
-        files = filenames(dates=[now.strftime("%d%m%Y")], hours=hours, mins=mins, files=files)
-
     # Get all possible combinations of params
-    bag_of_params = list(itertools.product(files, pr.warm_range, pr.train_range, pr.delay_range, pr.test_range, pr.ridge_range, pr.threshold_test_nrmse, pr.which_start))
+    bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, pr.test_range, pr.ridge_range, pr.threshold_test_nrmse))
     print('# of combinations:', len(bag_of_params))
 
     # Remove contents from last cross_val. We start anew each cross val during trading.
@@ -471,44 +477,32 @@ def cross_val_trading(t):
     # Cross val with multiprocessing for speed!
     cross_val_multiproc(params=bag_of_params)
 
-    # Find best params. We save 2 pairs: one with most count of a single train-delay pair that was cross validated + one with lowest NRMSE
-    # [[most count: train, delay, count, NRMSE],[lowest NRMSE: train, delay, count, NRMSE]]
-    best_params = [[0,0,0,1.],[0,0,0,1.]]
+    # Find best params. We save the one with lowest test NRMSE
+    # [[train, delay, NRMSE]]
+    best_param = [0,0,1.]
     bag_of_key_params = list(itertools.product(pr.train_range, pr.delay_range))
     # Iterate over each unique pair of train and delay
     for i in bag_of_key_params:
-        count = 0
         pattern = str(i[0])+'-'+str(i[1])+"-"
         # For each pair, calc count within cross_val folder
         for file in os.listdir(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val'):
             if re.match(pattern=pattern, string=file):
-                count += 1
                 # Get NRMSE & check if sensible. Rounding can cause value to be 0.7 or 0.45.
                 current_nrmse = float(file[-9:-5])
                 if file[-9:-5][0] == '-':
                     current_nrmse = float(file[-8:-5])
-                # Save the pair with most count.
-                if count > best_params[0][2]:
-                    best_params[0][0] = i[0]
-                    best_params[0][1] = i[1]
-                    best_params[0][2] = count
-                    best_params[0][3] = current_nrmse
                 # Save the pair with lowest NRMSE
-                if current_nrmse < best_params[1][3]:
-                    best_params[1][0] = i[0]
-                    best_params[1][1] = i[1]
-                    best_params[1][2] = count
-                    best_params[1][3] = current_nrmse
+                if current_nrmse < best_param[2]:
+                    best_param[0] = i[0]
+                    best_param[1] = i[1]
+                    best_param[2] = current_nrmse
 
-    # Pickle best params
-    with open('params_current_trading', 'wb') as f:
-        pickle.dump(best_params, f)
 
     print('Cross Val took this amount of time:', datetime.datetime.now()-start_time)
     print('Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
-    picklename = pr.data_store_location+now.strftime("%d%m%Y")+'/'+nowtime_build_last_t_hour+nowtime_build_last_t_min
-    return picklename
+    return best_param, picklename, get_one_second
+
 
 def cross_val_manual():
     print(' Time @ Start : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
@@ -517,17 +511,18 @@ def cross_val_manual():
     dates = ['04022022']  # [26012022, 27012022, 28012022]
     hours = [14]
     mins = range(45, 46)
-    files = filenames(dates=dates, hours=hours, mins=mins, files=[])
+    files = ut.filenames(dates=dates, hours=hours, mins=mins, files=[])
 
     # Get all possible combi of params
     # Get all possible combinations of params
-    bag_of_params = list(itertools.product(files, pr.warm_range, pr.train_range, pr.delay_range, pr.test_range, pr.ridge_range, pr.threshold_test_nrmse, pr.which_start))
+    bag_of_params = list(itertools.product(files, pr.warm_range, pr.train_range, pr.delay_range, pr.test_range, pr.ridge_range, pr.threshold_test_nrmse))
     print('# of params:', len(bag_of_params))
 
     cross_val_multiproc(params=bag_of_params)
     print(' Time @ End : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
     return
+
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
@@ -537,3 +532,15 @@ if __name__ == '__main__':
         with open('params_current_trading', 'rb') as f:
             contents = pickle.load(f)
         print('Best parameters:', contents)
+
+    # Quick test load.
+    if pr.test_load_function:
+        df = load(picklename=pr.data_store_location + '07022022/2307', seconds=15, isDebug=True)
+
+    # Quick test compute
+    if pr.test_compute_function:
+        df = load(picklename=pr.data_store_location + '04022022/1910', seconds=15, isDebug=False)
+        result = compute_ngrc(df, isDebug=0, isInfo=0, warmup=0, train=70, k=9, test=10, ridge_param=0, isTrg=1,
+                              isTrading=0)
+        print('Result:', result)
+

@@ -1,13 +1,6 @@
-import numpy as np
-import pyautogui as pag
-
-def find_mouse_pos():
-    return print(' Position is : ', pag.position())
-# find_mouse_pos()
-
-def show_keys():
-    return print(pag.KEYBOARD_KEYS)
-# show_keys()
+# Find coordinates
+# import utility as ut
+# ut.find_mouse_pos()
 
 # Required coordinates. Works only on my screen. Check browser at 100% zoom level
 olymp_hr = (162,973)
@@ -24,29 +17,40 @@ task_bar = (0,866)
 notepad_pp = (42,1027)
 pycharm = (44, 1082)
 
+
 # Data file location
 data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
 
-# Cross Val Params
-warm_range = [1]
-train_range = [20]
-delay_range = range(2,10)
-test_range = [10]
-ridge_range = [0]
-threshold_test_nrmse = [1]
 
-# To use cross_val_trading to look back at a particular minute and lookback_t before it.
-force_manual_cross_val_trading = True
+# Levers for testing different function
+test_get_one = False
+test_get_some = False
+test_build_dataset_last_t = False
+test_build_dataset = False
+test_load_function = False
+test_compute_function = False
+
+
+# Cross_val_trading: look back from a time and lookback_t behind.
+force_manual_cross_val_trading = False
 forced_hour = 12
 forced_min = 18
 
+# Cross Val Params
+warm_range = [0]
+train_range = [50,75,100,125] # In seconds
+delay_range = range(2,15) # In seconds
+test_range = [10] # In seconds
+ridge_range = [0]
+threshold_test_nrmse = [0.15]
+
 # Trading Params
-total_trade = 20 ; lookback_t = 1
-time_to_get_quote_seconds = 1.52
+total_trade = 5
+lookback_t = 4
+pred_delta_threshold = 0.1
+time_to_get_quote_seconds = 2.1
 target_start1_time_second = 60 ; target_start2_time_second = 45
 adjusted_start1_time_second = target_start1_time_second - (time_to_get_quote_seconds*lookback_t)
 adjusted_start2_time_second = target_start2_time_second - (time_to_get_quote_seconds*lookback_t)
 test_points = [test_range[0]-1, test_range[0], test_range[0]+1]
-pred_delta_threshold = 0.1 ; percent_correct_dir = 0
-which_start = [1]
 
