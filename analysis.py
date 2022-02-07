@@ -44,7 +44,7 @@ def load(picklename, seconds, isDebug=False):
         for minute in minutes_list[0]:
             minute_front = ut.process_current_datetime(min=minute)[2]
             minute_back = ut.process_current_datetime(min=minute)[3]
-            current_iter_picklename = pr.data_store_location+datetime.datetime.now().strftime("%d%m%Y")+'/'+hour_front+hour_back+minute_front+minute_back
+            current_iter_picklename = picklename[:-4]+hour_front+hour_back+minute_front+minute_back
             unpickled += pd.read_pickle(current_iter_picklename)
 
         if len(hours_list) == 2:
@@ -54,7 +54,7 @@ def load(picklename, seconds, isDebug=False):
             for minute in minutes_list[1]:
                 minute_front = ut.process_current_datetime(min=minute)[2]
                 minute_back = ut.process_current_datetime(min=minute)[3]
-                current_iter_picklename = pr.data_store_location+datetime.datetime.now().strftime("%d%m%Y")+'/'+hour_front+hour_back+minute_front+minute_back
+                current_iter_picklename = picklename[:-4]+hour_front+hour_back+minute_front+minute_back
                 unpickled += pd.read_pickle(current_iter_picklename)
 
 
@@ -535,11 +535,11 @@ if __name__ == '__main__':
 
     # Quick test load.
     if pr.test_load_function:
-        df = load(picklename=pr.data_store_location + '07022022/2307', seconds=15, isDebug=True)
+        df = load(picklename=pr.data_store_location + '07022022/2315', seconds=15, isDebug=True)
 
     # Quick test compute
     if pr.test_compute_function:
-        df = load(picklename=pr.data_store_location + '04022022/1910', seconds=15, isDebug=False)
+        df = load(picklename=pr.data_store_location + '07022022/1910', seconds=15, isDebug=False)
         result = compute_ngrc(df, isDebug=0, isInfo=0, warmup=0, train=70, k=9, test=10, ridge_param=0, isTrg=1,
                               isTrading=0)
         print('Result:', result)
