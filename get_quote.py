@@ -41,11 +41,7 @@ def tab_switch(tab, wait=0.3, refresh=False):
     return
 
 
-def olymptrade_time_and_quote(hour_front, hour_back, min_front, min_back, interval_typew=0.2, interval_price_wait=0.4, interval_home_end=0.05):
-
-    # In case last run didn't hit home proper
-    pag.click(x=pr.drag_start[0], y=pr.drag_start[1])
-    pag.typewrite(['home'], interval=interval_home_end)
+def olymptrade_time_and_quote(hour_front, hour_back, min_front, min_back, interval_typew=0, interval_price_wait=0.25):
 
     # Click on Olymptrade Hour, last digit
     pag.click(x=pr.olymp_hr[0], y=pr.olymp_hr[1])
@@ -59,19 +55,13 @@ def olymptrade_time_and_quote(hour_front, hour_back, min_front, min_back, interv
     pag.typewrite([min_back], interval=interval_typew)
     pag.typewrite(['enter'], interval=interval_price_wait)
 
-    # Drag scroll , copy data , reset for next
-    # Click on start of drag, left of 1st row of quote
-    pag.moveTo(x=pr.drag_start[0], y=pr.drag_start[1])
-    pag.mouseDown(button='left')
-    pag.typewrite(['end', 'end', 'end', 'end'], interval=interval_home_end)
-
-    # Click on end of drag + a bit of twiddle, exclude text at end, right of last row of quote
-    pag.moveTo(x=pr.drag_end[0], y=pr.drag_end[1])
-    pag.moveTo(x=pr.drag_end[0]+2, y=pr.drag_end[1]+2)
+    # Instead of dragging, we select all and leave it to others to sort data out.
+    pag.click(x=pr.drag_start[0], y=pr.drag_start[1])
+    pag.hotkey('ctrl', 'a')
     pag.hotkey('ctrl', 'c')
-    pag.mouseUp(button='left')
-    pag.typewrite(['home'], interval=interval_home_end)
+
     return
+
 
 def get_one_now(olymp_hr, olymp_min, drag_start, drag_end, task_bar, notepad_pp, waittime=0):
 
@@ -102,7 +92,8 @@ def get_one_now(olymp_hr, olymp_min, drag_start, drag_end, task_bar, notepad_pp,
     picklename = pr.data_store_location+date+'/'+hour_front+hour_back+min_front+min_back
     return picklename
 # get_one_now(olymp_hr=pr.olymp_hr, olymp_min=pr.olymp_min,drag_start=pr.drag_start, drag_end=pr.drag_end,task_bar=pr.task_bar, notepad_pp=pr.notepad_pp,waittime=0)
-#
+
+
 def get_some(olymp_hr, olymp_min, drag_start, drag_end, task_bar, notepad_pp,
              hour_list, min_list):
 
@@ -188,4 +179,4 @@ def build_dataset_last_t_minutes(t=1, isTrading=0):
     print('Built dataset for lookback_t:', t , 'minutes behind this time :', current_hour , current_min)
     print('Took this amount of time:', datetime.datetime.now() - start_time, 'to get', t, 'minutes of data')
     return hour_str, min_str
-build_dataset_last_t_minutes(t=1, isTrading=1)
+# build_dataset_last_t_minutes(t=1, isTrading=1)

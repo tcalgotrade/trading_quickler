@@ -33,16 +33,16 @@ train_range = [20]
 delay_range = range(2,10)
 test_range = [10]
 ridge_range = [0]
-threshold_test_nrmse = [0.2]
+threshold_test_nrmse = [1]
 
 # To use cross_val_trading to look back at a particular minute and lookback_t before it.
-force_manual_cross_val_trading = False
-forced_hour = 19
-forced_min = 58
+force_manual_cross_val_trading = True
+forced_hour = 12
+forced_min = 18
 
 # Trading Params
 total_trade = 20 ; lookback_t = 1
-time_to_get_quote_seconds = 3.7
+time_to_get_quote_seconds = 1.52
 target_start1_time_second = 60 ; target_start2_time_second = 45
 adjusted_start1_time_second = target_start1_time_second - (time_to_get_quote_seconds*lookback_t)
 adjusted_start2_time_second = target_start2_time_second - (time_to_get_quote_seconds*lookback_t)

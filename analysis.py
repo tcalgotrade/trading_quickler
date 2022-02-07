@@ -41,6 +41,11 @@ def load(picklename=None, filename=None, isInfo=0):
         if col == 2:
             df = df.iloc[:, :-1]
 
+        # We don't want first 65 rows.
+        df = df.iloc[66:, :1]
+        # Remove last 2 rows.
+        df = df.iloc[:-2, :1]
+
         # Check if first and last row is valid. If not, we drop it. We want first row to be time. Last row to be quote price.
         rows_to_check = 1
         for row in range(0, rows_to_check):
@@ -105,7 +110,7 @@ def load(picklename=None, filename=None, isInfo=0):
 
     return df
 # df = load(picklename=pr.data_store_location+'01022022/1530', isInfo=1)
-df = load(picklename=pr.data_store_location+'03022022/2112', isInfo=1)
+# df = load(picklename=pr.data_store_location+'07022022/1204', isInfo=0)
 
 def filenames(dates,hours,mins,files,store_folder=pr.data_store_location):
     # Create list of file names given a list of date and time + where to store it.
@@ -365,10 +370,9 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, which
     except Exception:
         print(traceback.format_exc())
         return -1, 0
-
-df = load(picklename=pr.data_store_location+'04022022/1445', isInfo=1)
-result = compute_ngrc(df, isDebug=1, isInfo=1, warmup=10, train=10, k=14, test=9, ridge_param=0.1,
-                      isTrading=0, isTrg=1, which_start=1)
+# df = load(picklename=pr.data_store_location+'04022022/1445', isInfo=1)
+# result = compute_ngrc(df, isDebug=1, isInfo=1, warmup=10, train=10, k=14, test=9, ridge_param=0.1,
+#                       isTrading=0, isTrg=1, which_start=1)
 
 
 def cross_val_ngrc(file, warm, train, delay, test, ridge, threshold_test_nrmse, which_start):
