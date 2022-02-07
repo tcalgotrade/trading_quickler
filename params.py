@@ -31,7 +31,7 @@ data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/da
 warm_range = [1]
 train_range = [20]
 delay_range = range(2,10)
-test_range = [14]
+test_range = [10]
 ridge_range = [0]
 threshold_test_nrmse = [0.2]
 
@@ -46,7 +46,7 @@ time_to_get_quote_seconds = 3.7
 target_start1_time_second = 60 ; target_start2_time_second = 45
 adjusted_start1_time_second = target_start1_time_second - (time_to_get_quote_seconds*lookback_t)
 adjusted_start2_time_second = target_start2_time_second - (time_to_get_quote_seconds*lookback_t)
-test_points = [10,11,12,13,14]
+test_points = [test_range[0]-1, test_range[0], test_range[0]+1]
 pred_delta_threshold = 0.1 ; percent_correct_dir = 0
 which_start = [1]
 
