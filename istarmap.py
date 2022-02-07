@@ -6,6 +6,7 @@ https://is.gd/Bd59jl
 
 def istarmap(self, func, iterable, chunksize=1):
     """starmap-version of imap
+    This iso we can pass multiple arguments into function for multiprocessing work.
     """
     self._check_running()
     if chunksize < 1:
