@@ -12,7 +12,7 @@ def show_keys():
 # Required coordinates. Works only on my screen. Check browser at 100% zoom level
 olymp_hr = (162,973)
 olymp_min = (199,973)
-olymp_browser = (322, 1043)
+olymp_browser = (1722, 22)
 olymp_up = (1812,580) # Half: (1812,580) Maximized: (3692, 580)
 oylmp_down = (1812,659) # Half: (1812,659) Maximized: (3692, 659)
 olymp_date = (187,887)

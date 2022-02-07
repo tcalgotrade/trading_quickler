@@ -29,6 +29,18 @@ def process_current_datetime(hour=None, min=None):
 
     return (hour_front,hour_back,min_front,min_back)
 
+
+def tab_switch(tab, wait=0.3, refresh=False):
+    pag.click(x=pr.olymp_browser[0], y=pr.olymp_browser[1])
+    pag.keyDown('ctrl')
+    pag.press(str(tab))
+    pag.keyUp('ctrl')
+    if refresh:
+        pag.press('f5')
+    time.sleep(wait)
+    return
+
+
 def olymptrade_time_and_quote(hour_front, hour_back, min_front, min_back, interval_typew=0.2, interval_price_wait=0.4, interval_home_end=0.05):
 
     # In case last run didn't hit home proper
@@ -176,4 +188,4 @@ def build_dataset_last_t_minutes(t=1, isTrading=0):
     print('Built dataset for lookback_t:', t , 'minutes behind this time :', current_hour , current_min)
     print('Took this amount of time:', datetime.datetime.now() - start_time, 'to get', t, 'minutes of data')
     return hour_str, min_str
-# build_dataset_last_t_minutes(t=2)
+build_dataset_last_t_minutes(t=1, isTrading=1)

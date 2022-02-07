@@ -232,7 +232,7 @@ if __name__ == '__main__':
     while True:
         print('Cycle # : ', cycle) ; print('Trade executed: ', trade, '\n')
 
-        # Some checks to make sure we're good before trading
+        # Some checks to make sure we're good before trading.
         if checks(day_change_chk=True) == 1:
             time.sleep(4*60)
             date_changer()
@@ -242,7 +242,8 @@ if __name__ == '__main__':
             checks(timed_start1_chk=True, start1_time_second=pr.adjusted_start1_time_second)
             checks(cycle1_warmup_chk=True)
 
-        # Start1
+        # We time our getting of data, do cross val do prediction and execute trade if within NRMSE
+        # Start1 @ target_start1_time_second
         if start_flag == 1:
             checks(timed_start1_chk=True, start1_time_second=pr.adjusted_start1_time_second)
         pr.which_start[0] = 1 ; start_flag = 2
@@ -255,7 +256,7 @@ if __name__ == '__main__':
             cycle = flow_control[1]
             trade = flow_control[2]
 
-        # Start2
+        # Start2 @ target_start2_time_second
         print('Cycle # : ', cycle) ; print('Trade executed: ', trade, '\n')
         if start_flag == 2:
             checks(timed_start2_chk=True, start2_time_second=pr.adjusted_start2_time_second)
