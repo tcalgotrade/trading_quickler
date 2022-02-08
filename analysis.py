@@ -419,6 +419,7 @@ def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, thresho
 
     # Get current date
     date = datetime.datetime.now().strftime("%d%m%Y")
+    start_time = datetime.datetime.now().strftime("%d%m%Y%H%M%S%f")
 
     # Compute NG-RC result and normalized RMSE
     result = compute_ngrc(df, isDebug=0, isInfo=0, warmup=warm, train=train, k=delay, test=test, ridge_param=ridge,
@@ -432,7 +433,7 @@ def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, thresho
                       np.around(result[1], 4), np.around(result[2], 4), threshold_test_nrmse, lookback_t)
 
             # Save cross val result
-            with open(pr.data_store_location + date + '/cross_val/'+ str(train) + '-' + str(delay) + '-' + str(test) + '-' + str(warm) + '-' + str(ridge) + '-' + str(lookback_t) + '-' + str(round(result[2],2)) + '-' + picklename[-4:] ,'wb') as f:
+            with open(pr.data_store_location + date + '/cross_val/'+ start_time ,'wb') as f:
                 pickle.dump(param, f)
 
     return
@@ -488,27 +489,30 @@ def cross_val_trading(t):
     for file in os.listdir(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val'):
         # Load pickle
         with open(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val/'+file, 'rb') as f:
+            # Sample param pickle: (picklename, seconds, warm, train, delay, test, ridge,
+            #                       np.around(result[1], 4), np.around(result[2], 4),
+            #                       threshold_test_nrmse, lookback_t)
             current_param = pickle.load(f)
         # Init nrmse value for compare & clarity.
-        current_nrmse = current_param[8]
+        test_nrmse = current_param[8]
         # Save 2 sets of lowest NRMSE
-        if current_nrmse < best_param[0][2]:
+        if test_nrmse < best_param[0][2]:
             best_param[0][0] = current_param[3]
             best_param[0][1] = current_param[4]
-            best_param[0][2] = current_nrmse
-            best_param[0][3] = current_param[3]
+            best_param[0][2] = test_nrmse
+            best_param[0][3] = current_param[10]
             best_param[0][4] = current_param[5]
-        if best_param[1][2] > current_nrmse > best_param[0][2]:
+        if best_param[1][2] > test_nrmse > best_param[0][2]:
             best_param[1][0] = current_param[3]
             best_param[1][1] = current_param[4]
-            best_param[1][2] = current_nrmse
-            best_param[1][3] = current_param[3]
+            best_param[1][2] = test_nrmse
+            best_param[1][3] = current_param[10]
             best_param[1][4] = current_param[5]
-        if best_param[0][2] > current_nrmse > best_param[1][2]:
+        if best_param[2][2] > test_nrmse > best_param[1][2]:
             best_param[2][0] = current_param[3]
             best_param[2][1] = current_param[4]
-            best_param[2][2] = current_nrmse
-            best_param[2][3] = current_param[3]
+            best_param[2][2] = test_nrmse
+            best_param[2][3] = current_param[10]
             best_param[2][4] = current_param[5]
 
     if pr.force_manual_cross_val_trading:
