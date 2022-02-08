@@ -433,7 +433,7 @@ def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, thresho
                       np.around(result[1], 4), np.around(result[2], 4), threshold_test_nrmse, lookback_t)
 
             # Save cross val result
-            with open(pr.data_store_location + date + '/cross_val/'+ start_time ,'wb') as f:
+            with open(pr.data_store_location + date + '/cross_val_'+pr.current_system+'/'+ start_time ,'wb') as f:
                 pickle.dump(param, f)
 
     return
