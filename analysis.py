@@ -466,8 +466,8 @@ def cross_val_trading(t):
         os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/')
 
     # Check if cross val dir created. if not, create it.
-    if not os.path.isdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val'):
-        os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val')
+    if not os.path.isdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_'+pr.current_system):
+        os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_'+pr.current_system)
 
     # Get all possible combinations of params
     lookback_t_range = range(pr.lookback_t_min, t+1)
