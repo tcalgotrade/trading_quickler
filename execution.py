@@ -190,7 +190,8 @@ def trade_execution(cycle, trade):
     else:
         print('No execution - Direction agreement: NO ')
 
-    time.sleep(5)
+    # Buld data up again in case the previous gets is not clean or full
+    gq.build_dataset_last_t_minutes(t=pr.lookback_t+1, isTrading=1)
     cycle += 1
     print('/****************************************************************************/\n')
     return 0 , cycle, trade

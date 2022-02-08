@@ -47,17 +47,17 @@ forced_min = 18
 
 # Cross Val Params
 warm_range = [1]
-train_range = [50,75,100,125] # In seconds
-delay_range = range(2,15) # In seconds
+train_range = [20,40,60,80] # In seconds
+delay_range = range(2,12) # In seconds
 test_range = [10] # In seconds
 ridge_range = [2.5e-6]
-threshold_test_nrmse = [0.5]
+threshold_test_nrmse = [0.2]
 
 
 # Trading Params
 total_trade = 3
-lookback_t = 7
-pred_delta_threshold = 0.1
+lookback_t = 5
+pred_delta_threshold = 0.05
 time_to_get_quote_seconds = 2.1
 quote_interval_typew = 0.1
 quote_interval_pricewait = 1

@@ -27,7 +27,7 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 warnings.filterwarnings('ignore')
 
 
-def load(picklename, seconds, isDebug=False):
+def load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
 
     # Build and process a dataframe containing t minutes of quote history data.
     # We assume pickle files of past t minutes already existed. This should be handled by main trading loop.
@@ -35,7 +35,7 @@ def load(picklename, seconds, isDebug=False):
         # Get hour and min from picklename.
         hour = int(picklename[-4:][0:2])
         minute = int(picklename[-4:][2:4])
-        hours_list, minutes_list = ut.hour_min_to_list_t(hour, minute, seconds, t=pr.lookback_t)
+        hours_list, minutes_list = ut.hour_min_to_list_t(hour, minute, seconds, t=lookback)
 
         # We gp through the timings and build up time series of minutes = lookback_t
         unpickled = ''
@@ -411,7 +411,7 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
         return -1, 0
 
 
-def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, threshold_test_nrmse):
+def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, threshold_test_nrmse, lookback_t):
 
     # Load dataframe from pickle
     df = load(picklename=picklename, seconds=seconds)
@@ -468,7 +468,8 @@ def cross_val_trading(t):
         os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val')
 
     # Get all possible combinations of params
-    bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, pr.test_range, pr.ridge_range, pr.threshold_test_nrmse))
+    lookback_t_range = range(2,pr.lookback_t+1)
+    bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, pr.test_range, pr.ridge_range, pr.threshold_test_nrmse, lookback_t_range))
     print('# of combinations:', len(bag_of_params))
 
     # Remove contents from last cross_val. We start anew each cross val during trading.
