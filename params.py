@@ -1,7 +1,3 @@
-# Find coordinates
-# import utility as ut
-# ut.find_mouse_pos()
-
 # Required coordinates. Works only on my screen. Check browser at 100% zoom level
 olymp_hr = (162,973)
 olymp_min = (199,973)
@@ -9,13 +5,9 @@ olymp_browser = (1722, 22)
 olymp_up = (1812,580) # Half: (1812,580) Maximized: (3692, 580)
 oylmp_down = (1812,659) # Half: (1812,659) Maximized: (3692, 659)
 olymp_date = (187,887)
-olymp_day_1 = (252,1058)
-olymp_day_7 = (209,1107)
+olymp_day = ()
 drag_start = (132,1114)
 drag_end = (476,2048)
-task_bar = (0,866)
-notepad_pp = (42,1027)
-pycharm = (44, 1082)
 
 
 # Data file location

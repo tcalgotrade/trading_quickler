@@ -65,8 +65,7 @@ def get_one_now():
     return picklename, now.hour, now.minute, now.second
 
 
-def get_some(olymp_hr, olymp_min, drag_start, drag_end, task_bar,
-             hours_list, minutes_list):
+def get_some(hours_list, minutes_list):
 
     # Get date
     date = datetime.datetime.now().strftime("%d%m%Y")
@@ -115,8 +114,7 @@ def build_dataset(hours, mins):
         print('Cancelled by user.')
         return
 
-    get_some(olymp_hr=pr.olymp_hr, olymp_min=pr.olymp_min, drag_start=pr.drag_start, drag_end=pr.drag_end,
-             task_bar=pr.task_bar, hours_list=hours, minutes_list=mins)
+    get_some(hours_list=hours, minutes_list=mins)
 
 
 def build_dataset_last_t_minutes(t=1, isTrading=0):
@@ -137,8 +135,7 @@ def build_dataset_last_t_minutes(t=1, isTrading=0):
         current_min = pr.forced_min
 
     hours , minutes = ut.hour_min_to_list_t(now.hour, now.minute, now.second, t=t)
-    get_some(olymp_hr=pr.olymp_hr, olymp_min=pr.olymp_min, drag_start=pr.drag_start, drag_end=pr.drag_end,
-             task_bar=pr.task_bar, hours_list=hours, minutes_list=minutes)
+    get_some(hours_list=hours, minutes_list=minutes)
 
     print('Built dataset for lookback_t:', t , 'minutes behind this time :', now.hour , now.minute)
     print('Took this amount of time:', datetime.datetime.now() - start_time, 'to get', t, 'minutes of data')
@@ -149,8 +146,7 @@ if __name__ == '__main__':
     if pr.test_get_one:
         get_one_now()
     if pr.test_get_some:
-        get_some(olymp_hr=pr.olymp_hr, olymp_min=pr.olymp_min, drag_start=pr.drag_start, drag_end=pr.drag_end,
-                 task_bar=pr.task_bar, hours_list=[12], minutes_list=[0])
+        get_some(hours_list=[12], minutes_list=[0])
     if pr.test_build_dataset_last_t:
         build_dataset_last_t_minutes(t=15, isTrading=1)
     if pr.test_build_dataset:

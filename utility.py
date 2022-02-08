@@ -6,7 +6,7 @@ import datetime
 
 def find_mouse_pos():
     return print(' Position is : ', pag.position())
-
+find_mouse_pos()
 
 def show_keys():
     return print(pag.KEYBOARD_KEYS)
@@ -85,10 +85,11 @@ def simple_sched_start(year, month, day, hour, minute,sec=0):
 
 
 def date_changer():
+    """" Only changes to one day. Each calendar month is different """
     pag.moveTo(x=pr.drag_start[0], y=pr.drag_start[1])
-    pag.typewrite(['home'], interval=0.05)
+    pag.typewrite(['home'], interval=0.5)
     pag.click(x=pr.olymp_date[0], y=pr.olymp_date[1])
-    pag.click(x=pr.olymp_day_7[0], y=pr.olymp_day_7[1])
+    pag.click(x=pr.olymp_day[0], y=pr.olymp_day[1])
     return
 
 
