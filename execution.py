@@ -64,7 +64,7 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
         print('Trading Params:')
         print('total_trade:', pr.total_trade,'\nlookback_t:', pr.lookback_t,'\nadjusted_start1_time_second:', pr.adjusted_start1_time_second)
         print('test_points:',pr.test_points,'\npred_delta_threshold:',pr.pred_delta_threshold)
-        print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds, '\ntarget_start1_time_second:',pr.target_start1_time_second,'\ntarget_start2_time_second:', pr.target_start2_time_second, '\n')
+        print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds, '\ntarget_start1_time_second:',pr.target_start1_time_second)
         if setup_check == 'Cancel':
             print('Cancelled by user.')
             return 2
@@ -108,14 +108,6 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
         else:
             print('Waiting', (60 - datetime.datetime.now().second) + start1_time_second, 'seconds for right start')
             time.sleep((60 - datetime.datetime.now().second) + start1_time_second)
-        return
-
-    if timed_start2_chk and start2_time_second is not None:
-        if datetime.datetime.now().second < start2_time_second:
-            print('Waiting', start2_time_second - datetime.datetime.now().second, 'seconds for right start')
-            time.sleep(start2_time_second - datetime.datetime.now().second)
-        else:
-            print('Not in time for start2.',)
         return
 
     return

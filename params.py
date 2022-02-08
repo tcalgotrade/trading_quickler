@@ -56,13 +56,12 @@ threshold_test_nrmse = [0.2]
 
 # Trading Params
 total_trade = 3
-lookback_t = 5
+lookback_t = 3
 pred_delta_threshold = 0.05
 time_to_get_quote_seconds = 2.1
 quote_interval_typew = 0.1
 quote_interval_pricewait = 1
-target_start1_time_second = 60 ; target_start2_time_second = 45
+target_start1_time_second = 60
 adjusted_start1_time_second = target_start1_time_second - (time_to_get_quote_seconds*lookback_t)
-adjusted_start2_time_second = target_start2_time_second - (time_to_get_quote_seconds*lookback_t)
 test_points = [test_range[0]-1, test_range[0], test_range[0]+1]
 
