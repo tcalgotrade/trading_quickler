@@ -475,7 +475,7 @@ def cross_val_trading(t):
     print('# of combinations:', len(bag_of_params))
 
     # Remove contents from last cross_val. We start anew each cross val during trading. No storing of files between cross vals
-    files = glob.glob(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val/*')
+    files = glob.glob(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val_'+pr.current_system+'/*')
     for f in files:
         os.remove(f)
 
