@@ -130,6 +130,9 @@ def trade_execution(cycle, trade):
         cycle += 1
         return 1 , cycle, trade
 
+    # Print params to be used.
+    print('Using this params for this cycle:', best_param)
+
     # Load dataframe
     df = an.load(picklename=picklename, seconds=get_one_second)
     print('Loaded pickle for prediction for trading ... :', picklename)
@@ -180,11 +183,9 @@ def trade_execution(cycle, trade):
             # Check if agreement is no action
             if results[0][0] != -1:
                 trade += 1
-                time.sleep(3)
                 if trade == pr.total_trade:
                     end(cycle,trade)
                     return -1, cycle, trade
-
         else:
             print('No execution - Threshold: NO or Minute mismatch: YES')
     else:
