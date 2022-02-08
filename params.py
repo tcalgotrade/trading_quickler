@@ -59,7 +59,7 @@ train_range = [20,40,60] # In seconds
 delay_range = range(2,12) # In seconds
 test_range = [10] # In seconds
 ridge_range = [2.5e-6]
-threshold_test_nrmse = [0.15]
+threshold_test_nrmse = [1]
 
 
 # Trading Params

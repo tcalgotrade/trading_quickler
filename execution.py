@@ -129,19 +129,31 @@ def get_latest_trade_record():
     start_index = data.rfind("Status")
     data = data[start_index+len("Status")+len("Quickler	80%"):start_index+len("Status")+len("Quickler	80%")+77]
     record = []
-    for x in data.split('\n'):
+    for x in data.split():
         record.append(x)
+    print(':',record)
     print('\nLast trade result:')
-    print('OpenPrice:', record[1], 'ClosePrice:', record[3])
-    print('OpenTime:', record[2][-9:], 'CloseTime:',record[4][-9:])
-    if float(record[-2]) != 0:
-        record[-1] = 'WIN'
-        print('Outcome: WIN!!!!!!', record[-2])
+    print('OpenPrice:', record[1], 'ClosePrice:', record[5])
+    print('OpenTime:', record[4], 'CloseTime:',record[8])
+    if float(record[-1]) != 0:
+        record.append('WIN')
+        print('Outcome: WIN!!!!!!', record[-1])
     else:
         record[-1] = 'LOSE'
         print('Outcome: LOSE.')
     ut.tab_switch(tab=1)
-    return record[4][-9:]
+    return record[8]
+
+def update_test_range_param(data_time=None, close_time=None):
+    data_time = data_time.astype(str)
+    data_last_time = data_time.iloc[-1]
+    data_last_time = datetime.datetime.strptime(data_last_time, '%H:%M:%S.%f')
+    close_time = datetime.datetime.strptime(close_time, '%H:%M:%S')
+    diff = close_time - data_last_time
+    pr.test_range = [diff.total_seconds()]
+    print('Diff between data last time and trade close time:', diff.total_seconds())
+    print('Changed pr.test_range to::',pr.test_range)
+    return
 
 
 def trade_execution(cycle, trade):
@@ -206,7 +218,8 @@ def trade_execution(cycle, trade):
             # Check if agreement is no action
             if results[0][0] != -1:
                 trade += 1
-                get_latest_trade_record()
+                close_time = get_latest_trade_record()
+                update_test_range_param(data_time=df['time'], close_time=close_time)
                 if trade == pr.total_trade:
                     end(cycle,trade)
                     return -1, cycle, trade
