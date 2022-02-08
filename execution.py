@@ -272,4 +272,4 @@ if __name__ == '__main__':
             trade = flow_control[2]
 
         # Buld data up again in case the previous gets is not clean or full
-        gq.build_dataset_last_t_minutes(t=round(pr.lookback_t/2) , isTrading=1)
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t , isTrading=1)
