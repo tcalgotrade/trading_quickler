@@ -57,7 +57,7 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
 
     # Pop a prompt to make sure manual setup is good.
     if trade_start_chk:
-        setup_check = pag.confirm("IS BROWSER WINNDOW AT HALF AND AT QUOTE HISTORY?")
+        setup_check = pag.confirm("IS BROWSER WINDOW AT HALF AND AT QUOTE HISTORY?\nZOOM LEVEL CORRECT?")
         # Print key params for logging
         print('Started at:', datetime.datetime.now(), '\n')
         print('Cross Val Params:')
@@ -96,10 +96,10 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
         # Check current time now and the last time in data.
         # Platform have shown that it could give future data even though we are not in the future yet.
         # A refresh of the site might be needed.
-        last_sec = df['time'].iloc[-1].second
-        now_sec = datetime.datetime.now().second
-        print('Last row second:', last_sec, 'Current sec:', now_sec)
-        return
+        current_sec = datetime.datetime.now().second
+        if abs(float(df['time'].iloc[-1].second) - float(current_sec)) > 1:
+            print('Second mismatch between data & current time:', current_sec, ' vs ', df['time'].iloc[-1].second)
+        return 6
 
     if timed_start1_chk and start1_time_second is not None:
         # Timing the start of the cross val. We want to make sure we cross val on latest data and predict as ASAP.
@@ -187,7 +187,9 @@ def trade_execution(cycle, trade):
     min_mismatch = 0
     if checks(df=df, min_mismatch_chk=True) == 5:
         min_mismatch = 1
-    checks(df=df, sec_mismatch_chk=True)
+    sec_mismatch = 0
+    if checks(df=df, sec_mismatch_chk=True) == 6:
+        sec_mismatch = 1
 
     # Compute what trade actions to take
     # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
@@ -218,8 +220,8 @@ def trade_execution(cycle, trade):
     if action_sum == 0 or action_sum == len(results) or action_sum == -len(results):
         print('Direction agreement: YES ')
         # Check if mean of delta is above threshold.
-        if abs(mean_pred_delta) > pr.pred_delta_threshold and min_mismatch != 1:
-            print('Threshold: YES && Minute mismatch: NO')
+        if abs(mean_pred_delta) > pr.pred_delta_threshold and min_mismatch != 1 and sec_mismatch != 1:
+            print('Threshold: YES && Minute mismatch: NO  && Second mismatch: NO')
             execute(signal=results[0][0])
             # Check if agreement is no action
             if results[0][0] != -1:
@@ -230,7 +232,7 @@ def trade_execution(cycle, trade):
                     end(cycle,trade)
                     return -1, cycle, trade
         else:
-            print('No execution - Threshold: NO or Minute mismatch: YES')
+            print('No execution - Threshold: NO or Minute mismatch: YES or Second mismatch: YES')
     else:
         print('No execution - Direction agreement: NO ')
 
