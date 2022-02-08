@@ -11,6 +11,8 @@ import params as pr
 import utility as ut
 import logging
 
+pag.FAILSAFE = True
+
 def execute(signal):
     """
     :param signal: 1 buy up, 0 buy down, -1 take no action.
@@ -29,7 +31,7 @@ def execute(signal):
     if signal == -1:
         print('No trade taken: all results are outside of pred_delta tolerance.')
 
-    print('Time @ execute complete : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
+    print('>>> Time @ execute complete : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
     return
 
 
@@ -55,7 +57,7 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
 
     # Pop a prompt to make sure manual setup is good.
     if trade_start_chk:
-        setup_check = pag.confirm("Is Olymptrade browser window maximized and setup?")
+        setup_check = pag.confirm("IS BROWSER WINNDOW AT HALF AND AT QUOTE HISTORY?")
         # Print key params for logging
         print('Started at:', datetime.datetime.now(), '\n')
         print('Cross Val Params:')
@@ -77,7 +79,7 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
 
     if params_chk and trade_params is not None:
         # Check if params are still default, if so, skip one iteration.
-        if trade_params == [0, 0, 1.]:
+        if trade_params == [[0,0,1.,0,0],[0,0,1.,0,0],[0,0,1.,0,0]]:
             print('Params still default. Go on to next iteration.')
             print('/****************************************************************************/\n')
             return 4
@@ -140,10 +142,10 @@ def get_latest_trade_record():
     print('OpenTime:', record[4], 'CloseTime:',record[8])
     if float(record[-1]) != 0:
         record.append('WIN')
-        print('Outcome: WIN!!!!!!', record[-2],'\n')
+        print('Outcome: WIN!!!!!!\n')
     else:
         record[-1] = 'LOSE'
-        print('Outcome: LOSE.', record[-2],'\n')
+        print('Outcome: LOSE.\n')
     ut.tab_switch(tab=1)
     return record[8]
 
@@ -162,6 +164,7 @@ def update_test_range_param(data_time=None, close_time=None):
 
 def trade_execution(cycle, trade):
 
+    # We cross validate for best params.
     best_param, picklename, get_one_second = an.cross_val_trading(t=pr.lookback_t)
 
     # Check if params are still default, if so, skip one iteration.
@@ -170,14 +173,14 @@ def trade_execution(cycle, trade):
         return 1 , cycle, trade
 
     # Print params to be used.
-    print('Using this params for this cycle:', best_param)
+    print('Using this params for this cycle: [train, delay, NRMSE, lookback_t, test] ', best_param)
 
     # Load dataframe
-    df = an.load(picklename=picklename, seconds=get_one_second)
+    df = an.load(picklename=picklename, lookback=best_param[0][3] ,seconds=get_one_second)
     print('Loaded pickle used for prediction for trading ... :', picklename)
     print('Dataframe Statistics:')
-    print('Time @ first row:', df['time'].iloc[0])
-    print('Time @ last row:', df['time'].iloc[-1])
+    print('>>> Time @ first row:', df['time'].iloc[0])
+    print('>>> Time @ last row:', df['time'].iloc[-1])
     print('Mean of quote history:', np.mean(df['quote']))
     print('Std Dev of quote history:', np.std(df['quote']))
 
@@ -192,9 +195,9 @@ def trade_execution(cycle, trade):
     results = []
     for test_point in pr.test_points:
         results.append(
-            an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=0, train=best_param[0], k=best_param[1], test=test_point,
+            an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=0, train=best_param[0][0], k=best_param[0][1], test=test_point,
                             ridge_param=pr.ridge_range[0], isTrg=0, isTrading=1))
-    print('Time @ compute complete : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
+    print('>>> Time @ compute complete : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
     # Consolidate results for trade execution.
     test_predictions_quote_delta = []
@@ -217,7 +220,7 @@ def trade_execution(cycle, trade):
         print('Direction agreement: YES ')
         # Check if mean of delta is above threshold.
         if abs(mean_pred_delta) > pr.pred_delta_threshold and min_mismatch != 1:
-            print('Threshold: YES Minute mismatch: NO')
+            print('Threshold: YES && Minute mismatch: NO')
             execute(signal=results[0][0])
             # Check if agreement is no action
             if results[0][0] != -1:

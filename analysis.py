@@ -134,7 +134,7 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
     total_var = np.var(df['quote'])
 
     # Get rows and cols of dataframe
-    rows, cols = df.shape
+    r, c = df.shape
 
     # time step
     dt = np.round(df['time_diff'].dt.total_seconds().mean(),2)
@@ -152,7 +152,7 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
         traintime_pts = round(traintime / dt)
         testtime_pts = round(testtime / dt)
         warmup_pts = round(warmup / dt)
-        warmup_pts = rows - (traintime_pts+testtime_pts+warmup_pts)
+        if warmup == 0: warmup_pts = r - (traintime_pts+testtime_pts)
         warmtrain_pts = warmup_pts + traintime_pts
         maxtime_pts = warmtrain_pts + testtime_pts
 
@@ -161,7 +161,7 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
         traintime_pts = round(traintime / dt) # Number of 'dt' to trg on
         testtime_pts = round(testtime / dt) # Number of 'dt' to predict ahead
         warmup_pts = round(warmup / dt)
-        warmup_pts = rows - (traintime_pts+warmup_pts) # Number of 'dt' to shift so we trg on latest data we have, We ignore param 'warm'
+        if warmup == 0: warmup_pts = r - traintime_pts # Number of 'dt' to shift so we trg on latest data we have, We ignore param 'warm'
         warmtrain_pts = warmup_pts + traintime_pts # Number of 'dt' sum of warm and train
         maxtime_pts = warmtrain_pts # Number of dt sum of warm and train, less test because we're trading now
 
@@ -241,9 +241,10 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
     except Exception:
         print('Something went wrong when computing : out_train ')
         print('Warm:', warmup, 'Train:', train,  'Delay', k,  'Test', test,  'Ridge', ridge_param)
+        print('x shape:',x.shape)
         print('out_train:',out_train.shape)
         print('Dataframe shape', df.shape)
-        print('dtot , traintime_pts:', dtot, traintime_pts)
+        print('dtot, traintime_pts, dlin, warmup_pts, warmtrain_pts, dt:', dtot, traintime_pts, dlin, warmup_pts, warmtrain_pts, dt)
         print(traceback.format_exc())
         return -1, 0
 
@@ -454,7 +455,7 @@ def cross_val_trading(t):
 
     # Get date & time
     start_time = now = datetime.datetime.now()
-    print('Time @ Cross Val start : ', start_time.strftime("%H:%M:%S.%f"))
+    print('>>> Time @ Cross Val start : ', start_time.strftime("%H:%M:%S.%f"))
 
     # We have already warmed up prior to cycle start. So we now get one quote at current time.
     picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
@@ -468,11 +469,11 @@ def cross_val_trading(t):
         os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val')
 
     # Get all possible combinations of params
-    lookback_t_range = range(2,pr.lookback_t+1)
+    lookback_t_range = range(pr.lookback_t_min, t+1)
     bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, pr.test_range, pr.ridge_range, pr.threshold_test_nrmse, lookback_t_range))
     print('# of combinations:', len(bag_of_params))
 
-    # Remove contents from last cross_val. We start anew each cross val during trading.
+    # Remove contents from last cross_val. We start anew each cross val during trading. No storing of files between cross vals
     files = glob.glob(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val/*')
     for f in files:
         os.remove(f)
@@ -481,31 +482,46 @@ def cross_val_trading(t):
     cross_val_multiproc(params=bag_of_params)
 
     # Find best params. We save the one with lowest test NRMSE
-    # [[train, delay, NRMSE, lookback_t]]
-    best_param = [0,0,1.,0]
+    # [[train, delay, NRMSE, lookback_t, test]]
+    best_param = [[0,0,1.,0,0],[0,0,1.,0,0],[0,0,1.,0,0]]
     # Open every param pickle file in cross_val folder
     for file in os.listdir(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val'):
         # Load pickle
         with open(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val/'+file, 'rb') as f:
             current_param = pickle.load(f)
-        # Get NRMSE & check if sensible. Rounding can cause value to be 0.7 or 0.45.
+        # Init nrmse value for compare & clarity.
         current_nrmse = current_param[8]
-        # Save the pair with lowest NRMSE
-        if current_nrmse < best_param[2]:
-            best_param[0] = current_param[3]
-            best_param[1] = current_param[4]
-            best_param[2] = current_nrmse
-            best_param[3] = current_param[-1]
+        # Save 2 sets of lowest NRMSE
+        if current_nrmse < best_param[0][2]:
+            best_param[0][0] = current_param[3]
+            best_param[0][1] = current_param[4]
+            best_param[0][2] = current_nrmse
+            best_param[0][3] = current_param[3]
+            best_param[0][4] = current_param[5]
+        if best_param[1][2] > current_nrmse > best_param[0][2]:
+            best_param[1][0] = current_param[3]
+            best_param[1][1] = current_param[4]
+            best_param[1][2] = current_nrmse
+            best_param[1][3] = current_param[3]
+            best_param[1][4] = current_param[5]
+        if best_param[0][2] > current_nrmse > best_param[1][2]:
+            best_param[2][0] = current_param[3]
+            best_param[2][1] = current_param[4]
+            best_param[2][2] = current_nrmse
+            best_param[2][3] = current_param[3]
+            best_param[2][4] = current_param[5]
 
-    print(':',best_param)
+    if pr.force_manual_cross_val_trading:
+        print('2 sets of best param [train, delay, NRMSE, lookback_t, test]:', best_param)
+
     print('Cross Val took this amount of time:', datetime.datetime.now()-start_time)
-    print('Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
+    print('>>> Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
     return best_param, picklename, get_one_second
 
 
 def cross_val_manual():
-    print(' Time @ Start : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
+    print(' >>> Time @ Start : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
     # Get filenames
     dates = ['04022022']  # [26012022, 27012022, 28012022]
@@ -519,7 +535,7 @@ def cross_val_manual():
     print('# of params:', len(bag_of_params))
 
     cross_val_multiproc(params=bag_of_params)
-    print(' Time @ End : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
+    print(' >>> Time @ End : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
     return
 
@@ -529,17 +545,17 @@ if __name__ == '__main__':
 
     # Force a manual cross val for trading
     if pr.force_manual_cross_val_trading:
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t+1,isTrading=0)
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=0)
         cross_val_trading(t=pr.lookback_t)
 
 
     # Quick test load.
     if pr.test_load_function:
-        df = load(picklename=pr.data_store_location + '08022022/0847', seconds=15, isDebug=True)
+        df = load(picklename=pr.data_store_location + '08022022/0847', t=pr.lookback_t ,seconds=15, isDebug=True)
 
     # Quick test compute
     if pr.test_compute_function:
-        df = load(picklename=pr.data_store_location + '07022022/1910', seconds=15, isDebug=False)
+        df = load(picklename=pr.data_store_location + '08022022/1359', t=pr.lookback_t ,seconds=15, isDebug=True)
         result = compute_ngrc(df, isDebug=0, isInfo=0, warmup=0, train=70, k=9, test=10, ridge_param=0, isTrg=1,
                               isTrading=0)
         print('Result:', result)
