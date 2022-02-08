@@ -2,6 +2,7 @@ import numpy as np
 import get_quote as gq
 import analysis as an
 import pyautogui as pag
+from tkinter import Tk
 import datetime
 import time
 import multiprocessing
@@ -33,11 +34,10 @@ def execute(signal):
 
 
 def end(cycle, trade):
-
-   # Print some numbers
+    # Print some numbers
+    print('\n/****************************************************************************/\n')
     print('Final Cycle # : ', cycle)
     print('Final Trade executed: ', trade)
-
     return
 
 
@@ -113,6 +113,37 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
     return
 
 
+def get_latest_trade_record():
+    # Swwtich tab. Assume trade record page is on tab 2
+    ut.tab_switch(tab=2)
+    # Wait for trade to be registered
+    time.sleep(5)
+    # Refresh to make sure we have latest trade.
+    pag.hotkey('f5')
+    # Wait for page to load
+    time.sleep(4)
+    pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1])
+    pag.hotkey('ctrl', 'a')
+    pag.hotkey('ctrl', 'c')
+    data = Tk().clipboard_get()
+    start_index = data.rfind("Status")
+    data = data[start_index+len("Status")+len("Quickler	80%"):start_index+len("Status")+len("Quickler	80%")+77]
+    record = []
+    for x in data.split('\n'):
+        record.append(x)
+    print('\nLast trade result:')
+    print('OpenPrice:', record[1], 'ClosePrice:', record[3])
+    print('OpenTime:', record[2][-9:], 'CloseTime:',record[4][-9:])
+    if float(record[-2]) != 0:
+        record[-1] = 'WIN'
+        print('Outcome: WIN!!!!!!', record[-2])
+    else:
+        record[-1] = 'LOSE'
+        print('Outcome: LOSE.')
+    ut.tab_switch(tab=1)
+    return record[4][-9:]
+
+
 def trade_execution(cycle, trade):
 
     best_param, picklename, get_one_second = an.cross_val_trading(t=pr.lookback_t)
@@ -175,6 +206,7 @@ def trade_execution(cycle, trade):
             # Check if agreement is no action
             if results[0][0] != -1:
                 trade += 1
+                get_latest_trade_record()
                 if trade == pr.total_trade:
                     end(cycle,trade)
                     return -1, cycle, trade
@@ -221,3 +253,6 @@ if __name__ == '__main__':
         if flow_control[0] == 1 or flow_control[0] == 0:
             cycle = flow_control[1]
             trade = flow_control[2]
+
+        # Buld data up again in case the previous gets is not clean or full
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t + 1, isTrading=1)

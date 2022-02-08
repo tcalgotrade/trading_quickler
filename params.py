@@ -10,6 +10,10 @@ if current_system == 'rested':
     oylmp_down = (1812,659) # Half: (1812,659) Maximized: (3692, 659)
     olymp_date = (187,887)
     olymp_day = ()
+    olymp_trade_record = (323,702)
+    olymp_trade_record_first = (364,705)
+    olymp_trade_record_drag_start = (623,1286)
+    olymp_trade_record_drag_end = (1081,1361)
     drag_start = (132,1114)
     drag_end = (476,2048)
 if current_system == 'z400':
@@ -27,6 +31,10 @@ if current_system == 'z400':
 
 # Data file location
 data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
+
+
+# Asset name
+asset_name = "Quickler"
 
 
 # Levers for different function
@@ -47,11 +55,11 @@ forced_min = 18
 
 # Cross Val Params
 warm_range = [1]
-train_range = [20,40,60,80] # In seconds
+train_range = [20,40,60] # In seconds
 delay_range = range(2,12) # In seconds
 test_range = [10] # In seconds
 ridge_range = [2.5e-6]
-threshold_test_nrmse = [0.2]
+threshold_test_nrmse = [0.15]
 
 
 # Trading Params
