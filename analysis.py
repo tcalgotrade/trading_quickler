@@ -535,7 +535,7 @@ if __name__ == '__main__':
 
     # Quick test load.
     if pr.test_load_function:
-        df = load(picklename=pr.data_store_location + '07022022/2315', seconds=15, isDebug=True)
+        df = load(picklename=pr.data_store_location + '08022022/0847', seconds=15, isDebug=True)
 
     # Quick test compute
     if pr.test_compute_function:

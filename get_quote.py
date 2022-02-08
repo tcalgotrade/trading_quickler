@@ -10,7 +10,7 @@ import logging as lg
 
 
 def olymptrade_time_and_quote(hour_front, hour_back, min_front, min_back,
-                              interval_typew=0.01, interval_price_wait=0.4):
+                              interval_typew=pr.quote_interval_typew, interval_price_wait=pr.quote_interval_pricewait):
 
     # Click on Olymptrade Hour, last digit
     pag.click(x=pr.olymp_hr[0], y=pr.olymp_hr[1])
@@ -148,6 +148,6 @@ if __name__ == '__main__':
     if pr.test_get_some:
         get_some(hours_list=[12], minutes_list=[0])
     if pr.test_build_dataset_last_t:
-        build_dataset_last_t_minutes(t=15, isTrading=1)
+        build_dataset_last_t_minutes(t=5, isTrading=1)
     if pr.test_build_dataset:
         build_dataset(hours=[10,12,14,16,18,20,22], mins=range(28,49))
