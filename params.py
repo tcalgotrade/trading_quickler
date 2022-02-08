@@ -1,5 +1,5 @@
-current_system = 'z400'
-# current_system = 'rested'
+# current_system = 'z400'
+current_system = 'rested'
 
 if current_system == 'rested':
     # Check browser at 100% zoom level. Window at half.
@@ -33,9 +33,9 @@ data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/da
 find_pos = False
 test_get_one = False
 test_get_some = False
-test_build_dataset_last_t = True
+test_build_dataset_last_t = False
 test_build_dataset = False
-test_load_function = True
+test_load_function = False
 test_compute_function = False
 
 
@@ -46,17 +46,17 @@ forced_min = 18
 
 
 # Cross Val Params
-warm_range = [0]
+warm_range = [1]
 train_range = [50,75,100,125] # In seconds
 delay_range = range(2,15) # In seconds
 test_range = [10] # In seconds
-ridge_range = [0]
-threshold_test_nrmse = [0.15]
+ridge_range = [2.5e-6]
+threshold_test_nrmse = [0.5]
 
 
 # Trading Params
-total_trade = 5
-lookback_t = 4
+total_trade = 3
+lookback_t = 7
 pred_delta_threshold = 0.1
 time_to_get_quote_seconds = 2.1
 quote_interval_typew = 0.1

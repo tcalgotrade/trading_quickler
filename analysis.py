@@ -151,7 +151,8 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
     if isTrg:
         traintime_pts = round(traintime / dt)
         testtime_pts = round(testtime / dt)
-        warmup_pts = rows - (traintime_pts+testtime_pts)
+        warmup_pts = round(warmup / dt)
+        warmup_pts = rows - (traintime_pts+testtime_pts+warmup_pts)
         warmtrain_pts = warmup_pts + traintime_pts
         maxtime_pts = warmtrain_pts + testtime_pts
 
@@ -159,7 +160,8 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
         # When trading, we do not need test data.
         traintime_pts = round(traintime / dt) # Number of 'dt' to trg on
         testtime_pts = round(testtime / dt) # Number of 'dt' to predict ahead
-        warmup_pts = rows - traintime_pts # Number of 'dt' to shift so we trg on latest data we have, We ignore param 'warm'
+        warmup_pts = round(warmup / dt)
+        warmup_pts = rows - (traintime_pts+warmup_pts) # Number of 'dt' to shift so we trg on latest data we have, We ignore param 'warm'
         warmtrain_pts = warmup_pts + traintime_pts # Number of 'dt' sum of warm and train
         maxtime_pts = warmtrain_pts # Number of dt sum of warm and train, less test because we're trading now
 
