@@ -127,7 +127,7 @@ def get_latest_trade_record():
     # Refresh to make sure we have latest trade.
     pag.hotkey('f5')
     # Wait for page to load
-    time.sleep(5)
+    time.sleep(7)
     pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1])
     pag.hotkey('ctrl', 'a')
     pag.hotkey('ctrl', 'c')
@@ -149,14 +149,13 @@ def get_latest_trade_record():
     ut.tab_switch(tab=1)
     return record[8]
 
-
 def update_test_range_param(data_time=None, close_time=None):
     data_time = data_time.astype(str)
     data_last_time = data_time.iloc[-1]
     data_last_time = datetime.datetime.strptime(data_last_time, '%H:%M:%S.%f')
     close_time = datetime.datetime.strptime(close_time, '%H:%M:%S')
     diff = close_time - data_last_time
-    pr.test_range = [diff.total_seconds()]
+    pr.test_range = [abs(diff.total_seconds())]
     print('Diff between data last time and trade close time:', diff.total_seconds())
     print('Changed pr.test_range to::',pr.test_range)
     return
