@@ -44,7 +44,7 @@ def end(cycle, trade):
 
 
 def checks(trade_params=None, df=None, start1_time_second= None, start2_time_second = None,
-           day_change_chk=False, trade_start_chk=False, cycle1_warmup_chk=False, params_chk=False, min_mismatch_chk=False, sec_mismatch_chk=False,
+           day_change_chk=False, trade_start_chk=False, cycle1_warmup_chk=False, params_chk=False, time_mismatch_chk=False, sec_mismatch_chk=False,
            timed_start1_chk=False, timed_start2_chk=False):
     """ All checks leading up to trade execution checks."""
 
@@ -84,22 +84,15 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
             print('/****************************************************************************/\n')
             return 4
 
-    if min_mismatch_chk and df is not None:
-        # Check current min vs current min of last row of dataframe.
-        # If there's more than a diff of 1, sth went wrong during get_quote: do nothing.
-        current_min = datetime.datetime.now().minute
-        if abs(float(df['time'].iloc[-1].minute) - float(current_min)) > 1:
-            print('Minute mismatch between data & current time:', current_min, ' vs ', df['time'].iloc[-1].minute)
+    if time_mismatch_chk and df is not None:
+        now = datetime.datetime.now().strftime('%H:%M:%S.%f')
+        now = datetime.datetime.strptime(now, '%H:%M:%S.%f')
+        data_time = df['time'].astype(str)
+        data_last_time = datetime.datetime.strptime(data_time.iloc[-1], '%H:%M:%S.%f')
+        diff = now - data_last_time
+        if diff.total_seconds() < 0:
+            print('Time mismatch - Diff of ', diff.total_seconds())
             return 5
-
-    if sec_mismatch_chk and df is not None:
-        # Check current time now and the last time in data.
-        # Platform have shown that it could give future data even though we are not in the future yet.
-        # A refresh of the site might be needed.
-        current_sec = datetime.datetime.now().second
-        if abs(float(df['time'].iloc[-1].second) - float(current_sec)) > 1:
-            print('Second mismatch between data & current time:', current_sec, ' vs ', df['time'].iloc[-1].second)
-        return 6
 
     if timed_start1_chk and start1_time_second is not None:
         # Timing the start of the cross val. We want to make sure we cross val on latest data and predict as ASAP.
@@ -155,7 +148,8 @@ def update_test_range_param(data_time=None, close_time=None):
     data_last_time = datetime.datetime.strptime(data_last_time, '%H:%M:%S.%f')
     close_time = datetime.datetime.strptime(close_time, '%H:%M:%S')
     diff = close_time - data_last_time
-    pr.test_range = [abs(diff.total_seconds())]
+    if diff.total_seconds() > 0 and diff.total_seconds() < 13:
+        pr.test_range = [diff.total_seconds()]
     print('Diff between data last time and trade close time:', diff.total_seconds())
     print('Changed pr.test_range to::',pr.test_range)
     return
@@ -184,12 +178,9 @@ def trade_execution(cycle, trade):
     print('Std Dev of quote history:', np.std(df['quote']))
 
     # Check current min/sec vs min/sec of last row of dataframe.
-    min_mismatch = 0
-    if checks(df=df, min_mismatch_chk=True) == 5:
-        min_mismatch = 1
-    sec_mismatch = 0
-    if checks(df=df, sec_mismatch_chk=True) == 6:
-        sec_mismatch = 1
+    time_mismatch = 0
+    if checks(df=df, time_mismatch_chk=True) == 5:
+        time_mismatch = 1
 
     # Compute what trade actions to take
     # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
@@ -217,24 +208,28 @@ def trade_execution(cycle, trade):
     print('Std Dev of all results pred delta:', stdev_pred_delta)
 
     # Trade Execution
-    if action_sum == 0 or action_sum == len(results) or action_sum == -len(results):
-        print('Direction agreement: YES ')
-        # Check if mean of delta is above threshold.
-        if abs(mean_pred_delta) > pr.pred_delta_threshold and min_mismatch != 1 and sec_mismatch != 1:
-            print('Threshold: YES && Minute mismatch: NO  && Second mismatch: NO')
-            execute(signal=results[0][0])
-            # Check if agreement is no action
-            if results[0][0] != -1:
-                trade += 1
-                close_time = get_latest_trade_record()
-                update_test_range_param(data_time=df['time'], close_time=close_time)
-                if trade == pr.total_trade:
-                    end(cycle,trade)
-                    return -1, cycle, trade
+    if time_mismatch != 1:
+        print('No execution - Time Mismatch: NO')
+        if action_sum == 0 or action_sum == len(results) or action_sum == -len(results):
+            print('Direction agreement: YES ')
+            # Check if mean of delta is above threshold.
+            if abs(mean_pred_delta) > pr.pred_delta_threshold:
+                print('Threshold met: YES')
+                execute(signal=results[0][0])
+                # Check if agreement is no action
+                if results[0][0] != -1:
+                    trade += 1
+                    close_time = get_latest_trade_record()
+                    update_test_range_param(data_time=df['time'], close_time=close_time)
+                    if trade == pr.total_trade:
+                        end(cycle,trade)
+                        return -1, cycle, trade
+            else:
+                print('No execution - Threshold met: NO')
         else:
-            print('No execution - Threshold: NO or Minute mismatch: YES or Second mismatch: YES')
+            print('No execution - Direction agreement: NO ')
     else:
-        print('No execution - Direction agreement: NO ')
+        print('No execution - Time Mismatch: YES')
 
     cycle += 1
     print('/****************************************************************************/\n')
