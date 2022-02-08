@@ -243,10 +243,9 @@ if __name__ == '__main__':
     # tradelog_name = "trade_execution_"+str(tradelog_datetime)+".log"
     # logging.basicConfig(filename=tradelog_name, level=logging.DEBUG) # https://www.loggly.com/?p=76609
 
-    multiprocessing.freeze_support() ; cycle = 1 ; trade = 0 ; start_flag = 1
+    multiprocessing.freeze_support() ; cycle = 1 ; trade = 0
 
     while True:
-        break
         print('Cycle # : ', cycle) ; print('Trade executed: ', trade, '\n')
 
         # Some checks to make sure we're good before trading.
@@ -272,4 +271,3 @@ if __name__ == '__main__':
 
         # Buld data up again in case the previous gets is not clean or full
         gq.build_dataset_last_t_minutes(t=round(pr.lookback_t/2) , isTrading=1)
-        gq.get_one_now()
