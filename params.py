@@ -35,7 +35,7 @@ data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/da
 
 # Asset name
 asset_name = "Quickler"
-
+asset_duration = 5 # in seconds
 
 # Levers for different function
 find_pos = False
@@ -49,17 +49,15 @@ test_compute_function = False
 
 # Cross_val_trading: look back from a time and lookback_t behind.
 force_manual_cross_val_trading = False
-forced_hour = 12
-forced_min = 18
 
 
 # Cross Val Params
 warm_range = [1]
-train_range = [20,40,60] # In seconds
-delay_range = range(2,12) # In seconds
+train_range = [31,36,41] # In seconds
+delay_range = range(2,15) # In seconds
 test_range = [10] # In seconds
-ridge_range = [2.5e-6]
-threshold_test_nrmse = [1]
+ridge_range = [0]
+threshold_test_nrmse = [0.15]
 
 
 # Trading Params

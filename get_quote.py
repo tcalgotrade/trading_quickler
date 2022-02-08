@@ -130,11 +130,9 @@ def build_dataset_last_t_minutes(t=1, isTrading=0):
     start_time = now = datetime.datetime.now()
 
     # To use cross_val_trading to look back at a particular minute and lookback_t before it.
-    if pr.force_manual_cross_val_trading:
-        current_hour = pr.forced_hour
-        current_min = pr.forced_min
+    current_hour = now.hour ; current_min = now.minute ; current_sec = now.second
 
-    hours , minutes = ut.hour_min_to_list_t(now.hour, now.minute, now.second, t=t)
+    hours , minutes = ut.hour_min_to_list_t(current_hour, current_min, current_sec, t=t)
     get_some(hours_list=hours, minutes_list=minutes)
 
     print('Built dataset for lookback_t:', t , 'minutes behind this time :', now.hour , now.minute)

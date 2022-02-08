@@ -70,7 +70,7 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
             return 2
 
     if cycle1_warmup_chk:
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t, isTrading=1)
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t+1, isTrading=1)
         print('First cycle warmed up.')
         print('/****************************************************************************/\n')
         return 3
@@ -114,14 +114,18 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
 
 
 def get_latest_trade_record():
+    """
+    Sample record pulled from webiiste
+    ['%', '5132.46', 'February', '08,', '13:05:03', '5133.17', 'February', '08,', '13:05:08', '1.00', '1.80', 'WIN']
+    """
     # Swwtich tab. Assume trade record page is on tab 2
     ut.tab_switch(tab=2)
     # Wait for trade to be registered
-    time.sleep(5)
+    time.sleep(pr.asset_duration)
     # Refresh to make sure we have latest trade.
     pag.hotkey('f5')
     # Wait for page to load
-    time.sleep(4)
+    time.sleep(5)
     pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1])
     pag.hotkey('ctrl', 'a')
     pag.hotkey('ctrl', 'c')
@@ -131,18 +135,18 @@ def get_latest_trade_record():
     record = []
     for x in data.split():
         record.append(x)
-    print(':',record)
     print('\nLast trade result:')
     print('OpenPrice:', record[1], 'ClosePrice:', record[5])
     print('OpenTime:', record[4], 'CloseTime:',record[8])
     if float(record[-1]) != 0:
         record.append('WIN')
-        print('Outcome: WIN!!!!!!', record[-1])
+        print('Outcome: WIN!!!!!!', record[-2],'\n')
     else:
         record[-1] = 'LOSE'
-        print('Outcome: LOSE.')
+        print('Outcome: LOSE.', record[-2],'\n')
     ut.tab_switch(tab=1)
     return record[8]
+
 
 def update_test_range_param(data_time=None, close_time=None):
     data_time = data_time.astype(str)
@@ -170,7 +174,7 @@ def trade_execution(cycle, trade):
 
     # Load dataframe
     df = an.load(picklename=picklename, seconds=get_one_second)
-    print('Loaded pickle for prediction for trading ... :', picklename)
+    print('Loaded pickle used for prediction for trading ... :', picklename)
     print('Dataframe Statistics:')
     print('Time @ first row:', df['time'].iloc[0])
     print('Time @ last row:', df['time'].iloc[-1])
@@ -242,6 +246,7 @@ if __name__ == '__main__':
     multiprocessing.freeze_support() ; cycle = 1 ; trade = 0 ; start_flag = 1
 
     while True:
+        break
         print('Cycle # : ', cycle) ; print('Trade executed: ', trade, '\n')
 
         # Some checks to make sure we're good before trading.
@@ -266,4 +271,5 @@ if __name__ == '__main__':
             trade = flow_control[2]
 
         # Buld data up again in case the previous gets is not clean or full
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t + 1, isTrading=1)
+        gq.build_dataset_last_t_minutes(t=round(pr.lookback_t/2) , isTrading=1)
+        gq.get_one_now()

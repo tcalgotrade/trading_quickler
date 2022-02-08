@@ -414,7 +414,7 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
 def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, threshold_test_nrmse, lookback_t):
 
     # Load dataframe from pickle
-    df = load(picklename=picklename, seconds=seconds)
+    df = load(picklename=picklename,lookback=lookback_t ,seconds=seconds)
 
     # Get current date
     date = datetime.datetime.now().strftime("%d%m%Y")
@@ -428,10 +428,10 @@ def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, thresho
         if result[2] < threshold_test_nrmse:
 
             param = (picklename, seconds, warm, train, delay, test, ridge,
-                      np.around(result[1], 4), np.around(result[2], 4), threshold_test_nrmse)
+                      np.around(result[1], 4), np.around(result[2], 4), threshold_test_nrmse, lookback_t)
 
             # Save cross val result
-            with open(pr.data_store_location + date + '/cross_val/'+ str(train) + '-' + str(delay) + '-' + str(test) + '-' + str(warm) + '-' + str(ridge) + '-' + str(round(result[2],2))+ '-' + picklename[-4:] ,'wb') as f:
+            with open(pr.data_store_location + date + '/cross_val/'+ str(train) + '-' + str(delay) + '-' + str(test) + '-' + str(warm) + '-' + str(ridge) + '-' + str(lookback_t) + '-' + str(round(result[2],2)) + '-' + picklename[-4:] ,'wb') as f:
                 pickle.dump(param, f)
 
     return
@@ -481,26 +481,23 @@ def cross_val_trading(t):
     cross_val_multiproc(params=bag_of_params)
 
     # Find best params. We save the one with lowest test NRMSE
-    # [[train, delay, NRMSE]]
-    best_param = [0,0,1.]
-    bag_of_key_params = list(itertools.product(pr.train_range, pr.delay_range))
-    # Iterate over each unique pair of train and delay
-    for i in bag_of_key_params:
-        pattern = str(i[0])+'-'+str(i[1])+"-"
-        # For each pair, calc count within cross_val folder
-        for file in os.listdir(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val'):
-            if re.match(pattern=pattern, string=file):
-                # Get NRMSE & check if sensible. Rounding can cause value to be 0.7 or 0.45.
-                current_nrmse = float(file[-9:-5])
-                if file[-9:-5][0] == '-':
-                    current_nrmse = float(file[-8:-5])
-                # Save the pair with lowest NRMSE
-                if current_nrmse < best_param[2]:
-                    best_param[0] = i[0]
-                    best_param[1] = i[1]
-                    best_param[2] = current_nrmse
+    # [[train, delay, NRMSE, lookback_t]]
+    best_param = [0,0,1.,0]
+    # Open every param pickle file in cross_val folder
+    for file in os.listdir(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val'):
+        # Load pickle
+        with open(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val/'+file, 'rb') as f:
+            current_param = pickle.load(f)
+        # Get NRMSE & check if sensible. Rounding can cause value to be 0.7 or 0.45.
+        current_nrmse = current_param[8]
+        # Save the pair with lowest NRMSE
+        if current_nrmse < best_param[2]:
+            best_param[0] = current_param[3]
+            best_param[1] = current_param[4]
+            best_param[2] = current_nrmse
+            best_param[3] = current_param[-1]
 
-
+    print(':',best_param)
     print('Cross Val took this amount of time:', datetime.datetime.now()-start_time)
     print('Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
@@ -529,12 +526,12 @@ def cross_val_manual():
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
+
+    # Force a manual cross val for trading
     if pr.force_manual_cross_val_trading:
-        cross_val_trading(t=1)
-        # Open pickle files
-        with open('params_current_trading', 'rb') as f:
-            contents = pickle.load(f)
-        print('Best parameters:', contents)
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t+1,isTrading=0)
+        cross_val_trading(t=pr.lookback_t)
+
 
     # Quick test load.
     if pr.test_load_function:
