@@ -57,7 +57,9 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
 
     # Pop a prompt to make sure manual setup is good.
     if trade_start_chk:
-        setup_check = pag.confirm("IS BROWSER WINDOW AT HALF AND AT QUOTE HISTORY?\nZOOM LEVEL CORRECT?")
+        setup_check = pag.confirm(text="1) BROWSER WINDOW AT HALF\n 2) AT QUOTE HISTORY?\n 3) ZOOM LEVEL CORRECT?\n 4) CURRENT SYSTEM PARAM?",
+                                  title='>>> CHECKLIST <<<',
+                                  button=['OK','CANCEL'])
         # Print key params for logging
         print('Started at:', datetime.datetime.now(), '\n')
         print('Cross Val Params:')
@@ -67,7 +69,7 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
         print('total_trade:', pr.total_trade,'\nlookback_t:', pr.lookback_t,'\nadjusted_start1_time_second:', pr.adjusted_start1_time_second)
         print('test_points:',pr.test_points,'\npred_delta_threshold:',pr.pred_delta_threshold)
         print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds, '\ntarget_start1_time_second:',pr.target_start1_time_second)
-        if setup_check == 'Cancel':
+        if setup_check == 'CANCEL':
             print('Cancelled by user.')
             return 2
 
@@ -79,7 +81,9 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
 
     if params_chk and trade_params is not None:
         # Check if params are still default, if so, skip one iteration.
-        if trade_params == [[0,0,1.,0,0],[0,0,1.,0,0],[0,0,1.,0,0]]:
+        default_param = []
+        for i in range(0,pr.number_best_param): default_param.append([])
+        if trade_params == default_param:
             print('Params still default. Go on to next iteration.')
             print('/****************************************************************************/\n')
             return 4
@@ -143,12 +147,17 @@ def get_latest_trade_record():
     return record[8]
 
 def update_test_range_param(data_time=None, close_time=None):
+    # Convert incoming dataframe to string
     data_time = data_time.astype(str)
+    # Get last row's time
     data_last_time = data_time.iloc[-1]
+    # Change string to datetime object
     data_last_time = datetime.datetime.strptime(data_last_time, '%H:%M:%S.%f')
     close_time = datetime.datetime.strptime(close_time, '%H:%M:%S')
+    # Calc difference between
     diff = close_time - data_last_time
-    if diff.total_seconds() > 0 and diff.total_seconds() < 13:
+    # Only effect change
+    if diff.total_seconds() > pr.asset_duration and diff.total_seconds() < 14:
         pr.test_range = [diff.total_seconds()]
     print('Diff between data last time and trade close time:', diff.total_seconds())
     print('Changed pr.test_range to::',pr.test_range)
@@ -158,7 +167,7 @@ def update_test_range_param(data_time=None, close_time=None):
 def trade_execution(cycle, trade):
 
     # We cross validate for best params.
-    best_param, picklename, get_one_second = an.cross_val_trading(t=pr.lookback_t)
+    best_param, picklename, get_one_second = an.cross_val_trading(lookback_t=pr.lookback_t)
 
     # Check if params are still default, if so, skip one iteration.
     if checks(trade_params=best_param, params_chk=True) == 4:
@@ -169,7 +178,7 @@ def trade_execution(cycle, trade):
     print('Using this params for this cycle: [train, delay, NRMSE, lookback_t, test] ', best_param)
 
     # Load dataframe
-    df = an.load(picklename=picklename, lookback=best_param[0][3] ,seconds=get_one_second)
+    df = an.load(picklename=picklename, lookback=pr.lookback_t_min ,seconds=get_one_second)
     print('Loaded pickle used for prediction for trading ... :', picklename)
     print('Dataframe Statistics:')
     print('>>> Time @ first row:', df['time'].iloc[0])
@@ -187,7 +196,7 @@ def trade_execution(cycle, trade):
     results = []
     for test_point in pr.test_points:
         results.append(
-            an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=0, train=best_param[0][0], k=best_param[0][1], test=test_point,
+            an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=-1, train=best_param[0][0], k=best_param[0][1], test=test_point,
                             ridge_param=pr.ridge_range[0], isTrg=0, isTrading=1))
     print('>>> Time @ compute complete : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
