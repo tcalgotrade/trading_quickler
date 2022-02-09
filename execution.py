@@ -58,8 +58,7 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
     # Pop a prompt to make sure manual setup is good.
     if trade_start_chk:
         setup_check = pag.confirm(text="1) BROWSER WINDOW AT HALF\n 2) AT QUOTE HISTORY?\n 3) ZOOM LEVEL CORRECT?\n 4) CURRENT SYSTEM PARAM?",
-                                  title='>>> CHECKLIST <<<',
-                                  button=['OK','CANCEL'])
+                                  title='>>> CHECKLIST <<<')
         # Print key params for logging
         print('Started at:', datetime.datetime.now(), '\n')
         print('Cross Val Params:')
@@ -218,7 +217,7 @@ def trade_execution(cycle, trade):
 
     # Trade Execution
     if time_mismatch != 1:
-        print('No execution - Time Mismatch: NO')
+        print('Time Mismatch: NO')
         if action_sum == 0 or action_sum == len(results) or action_sum == -len(results):
             print('Direction agreement: YES ')
             # Check if mean of delta is above threshold.
@@ -234,11 +233,7 @@ def trade_execution(cycle, trade):
                         end(cycle,trade)
                         return -1, cycle, trade
             else:
-                print('No execution - Threshold met: NO')
-        else:
-            print('No execution - Direction agreement: NO ')
-    else:
-        print('No execution - Time Mismatch: YES')
+                print('No execution. Criteria not met.')
 
     cycle += 1
     print('/****************************************************************************/\n')

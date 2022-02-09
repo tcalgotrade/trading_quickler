@@ -56,7 +56,7 @@ test_compute_function = False
 # Backtesting with Cross_val_trading
 # Make sure date selected correctly.
 # Will overwrite files in today's data/training/*today* folder
-test_cross_val_trading = True
+test_cross_val_trading = False
 cross_val_past = False
 test_hour = '03' ; test_minute = '15' ; test_second = '12'
 
@@ -64,16 +64,16 @@ test_hour = '03' ; test_minute = '15' ; test_second = '12'
 warm_range = [-1] # In seconds. -1 to train and test on as close to current as possible. Must be > 0
 train_range = range(3,8) # In seconds
 delay_range = range(2,8) # In seconds
-test_range = [8] # In seconds. Updated on the fly during trading
+test_range = [5] # In seconds. Updated on the fly during trading
 ridge_range = [100]
-threshold_test_nrmse = [0.2] # Set to 1 to allow all to show up
+threshold_test_nrmse = [1] # Set to 1 to allow all to show up
 lookback_t_min = 2 # Only read by compute() when predicting for trade.
 lookback_t = 2 # Larger lookback_t allows for wider range of warm_range
 number_best_param = 10 # Minimally 1
 
 # Trading Params
 total_trade = 3
-pred_delta_threshold = 0.05
+pred_delta_threshold = 0.2
 time_to_get_quote_seconds = 2.1
 quote_interval_typew = 0.1
 quote_interval_pricewait = 1
