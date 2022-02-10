@@ -65,7 +65,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         print('Trading Params:')
         print('total_trade:', pr.total_trade,'\nlookback_t:', pr.lookback_t)
         print('pred_delta_threshold:',pr.pred_delta_threshold)
-        print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds)
+        print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds,'\n')
         if setup_check == 'Cancel':
             print('\nCancelled by user.')
             return 2
@@ -81,7 +81,6 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         for i in range(0,pr.number_best_param): default_param.append([])
         if trade_params == default_param:
             print('Params still default. Go on to next iteration.')
-            print('/****************************************************************************/\n')
             return 4
 
     if time_mismatch_chk and df is not None:
@@ -138,21 +137,7 @@ def demo_trade():
     return datetime.datetime.strptime(now, '%H:%M:%S.%f')
 
 
-def update_time_betw_execute_trade_open():
-    execute_time = demo_trade()
-    print('>>> Time @ Demo trade execution:',execute_time)
-    trade_open_time = get_latest_trade_record(isPrint=False)
-    trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S')
-    # Calc difference between. We should expect trade_open_time to be later.
-    diff = trade_open_time - execute_time
-    pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
-    pag.click(x=pr.olymp_usd_account[0], y=pr.olymp_usd_account[1], interval=0.5)
-    pr.time_taken_by_trade_execution = diff.total_seconds()
-    print('Updated time_taken_by_trade_execution:\n', pr.time_taken_by_trade_execution)
-    return
-
-
-def trade_execution(cycle, trade, time_taken_by_trade_execution):
+def trade_execution(cycle, trade):
 
     # We cross validate for best params.
     best_param, picklename, get_one_second, updated_test_time = an.cross_val_trading(lookback_t=pr.lookback_t)
@@ -211,7 +196,7 @@ def trade_execution(cycle, trade, time_taken_by_trade_execution):
     # Trade Execution
     if time_mismatch != 1:
         print('Time Mismatch: NO')
-        if action_sum == 0 or action_sum == len(results) or action_sum == -len(results):
+        if action_sum == 0 or action_sum == len(results):
             print('Direction agreement: YES ')
             # Check if mean of delta is above threshold.
             if abs(mean_pred_delta) > pr.pred_delta_threshold:
@@ -226,11 +211,10 @@ def trade_execution(cycle, trade, time_taken_by_trade_execution):
                         return -1, cycle, trade
 
     if time_mismatch == 1: print('No execution - Time Mismatch: YES')
-    if action_sum != 0 or action_sum != 1 or action_sum != -len(results): print('No execution - Direction agreement: NO')
+    if action_sum != 0 and action_sum != len(results): print('No execution - Direction agreement: NO')
     if abs(mean_pred_delta) < pr.pred_delta_threshold: print('No execution - Threshold met: NO')
 
     cycle += 1
-    print('\n/****************************************************************************/\n')
     return 0 , cycle, trade
 
 
@@ -240,7 +224,7 @@ if __name__ == '__main__':
     # tradelog_name = "trade_execution_"+str(tradelog_datetime)+".log"
     # logging.basicConfig(filename=tradelog_name, level=logging.DEBUG) # https://www.loggly.com/?p=76609
 
-    multiprocessing.freeze_support() ; cycle = 1 ; trade = 0 ; time_taken_by_trade_execution = pr.time_taken_by_trade_execution
+    multiprocessing.freeze_support() ; cycle = 1 ; trade = 0 ;
     while True:
         print('\n/****************************************************************************/\n')
         print('Cycle # : ', cycle) ; print('Trade executed: ', trade, '\n')
@@ -258,13 +242,13 @@ if __name__ == '__main__':
         if cycle == 1:
             if checks(cycle, trade_start_chk=True) == 2:
                 break
-            pr.time_taken_by_trade_execution = update_time_betw_execute_trade_open()
+            an.update_time_betw_execute_trade_open()
             gq.olymptrade_update_hour()
             checks(cycle1_warmup_chk=True)
             an.cross_val_trading(lookback_t=pr.lookback_t)
 
         # We time our getting of data, do cross val do prediction and execute trade if within NRMSE
-        flow_control = trade_execution(cycle=cycle, trade=trade, time_taken_by_trade_execution=time_taken_by_trade_execution)
+        flow_control = trade_execution(cycle=cycle, trade=trade)
 
         if flow_control[0] == -1:
             break
@@ -273,6 +257,6 @@ if __name__ == '__main__':
             trade = flow_control[2]
 
         # Get time between trade execution to trade close by doing a demo trade.
-        pr.time_taken_by_trade_execution = update_time_betw_execute_trade_open()
+        an.update_time_betw_execute_trade_open()
         # Buld data up again in case the previous gets is not clean or full
         gq.build_dataset_last_t_minutes(t=pr.lookback_t , isTrading=1)

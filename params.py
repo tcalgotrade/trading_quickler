@@ -69,16 +69,21 @@ delay_range = range(2,15) # In seconds
 ridge_range = [0]
 threshold_test_nrmse = [0.2] # Set to 1 to allow all to show up
 lookback_t_min = 2 # Only read by compute() when predicting for trade.
-lookback_t = 2 # Larger lookback_t allows for wider range of warm_range
+lookback_t = 2 # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
 number_best_param = 5 # Minimally 1
 
 # Params for how far ahead to predict
 time_taken_by_cross_val = -1 # GLOBAL: updated every cycle.
 time_taken_by_trade_execution = -1 # GLOBAL: updated every cycle.
 time_betw_cross_val_and_execution = 0.3 # Hardcode
+def change_time_onthefly(time_cv=None, time_te=None): # https://is.gd/HqFpNJ
+    global time_taken_by_cross_val
+    global time_taken_by_trade_execution
+    if time_cv is not None: time_taken_by_cross_val = time_cv
+    if time_te is not None: time_taken_by_trade_execution = time_te
 
 # Trading Params
-total_trade = 3
+total_trade = 5
 pred_delta_threshold = 0.1
 time_to_get_quote_seconds = 2.1
 quote_interval_typew = 0.1

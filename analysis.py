@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import datetime
 import pandas as pd
+import pyautogui as pag
 import multiprocessing
 from multiprocessing import Pool
 import istarmap
@@ -467,8 +468,21 @@ def cross_val_multiproc(params):
     return
 
 
-def cross_val_trading(lookback_t):
+def update_time_betw_execute_trade_open():
+    execute_time = ex.demo_trade()
+    print('>>> Time @ Demo trade execution:',execute_time)
+    trade_open_time = ex.get_latest_trade_record(isPrint=False)
+    trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S')
+    # Calc difference between. We should expect trade_open_time to be later.
+    diff = trade_open_time - execute_time
+    pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
+    pag.click(x=pr.olymp_usd_account[0], y=pr.olymp_usd_account[1], interval=0.5)
+    pr.change_time_onthefly(time_te=diff.total_seconds())
+    print('Updated time_taken_by_trade_execution:', pr.time_taken_by_trade_execution, '\n')
+    return
 
+
+def cross_val_trading(lookback_t):
 
     # Get date & time
     start_time = now = datetime.datetime.now()
@@ -491,7 +505,8 @@ def cross_val_trading(lookback_t):
     if pr.cross_val_specify_test:
         test_range = updated_test_time = pr.test_range
     else:
-        test_range = updated_test_time = [pr.time_taken_by_trade_execution + pr.time_taken_by_cross_val + pr.asset_duration + pr.time_betw_cross_val_and_execution] # note hard coded time between end cross val and trade exec end.
+        test_range = updated_test_time = [pr.time_taken_by_trade_execution + pr.time_taken_by_cross_val
+                                          + pr.asset_duration + pr.time_betw_cross_val_and_execution] # note hard coded time between end cross val and trade exec end.
     bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, lookback_t_range))
     print('# of combinations:', len(bag_of_params))
 
@@ -556,12 +571,12 @@ def cross_val_trading(lookback_t):
         print('Best params [train, delay, NRMSE, lookback_t, test]:', best_param)
 
     print('Cross Val took this amount of time:', datetime.datetime.now()-start_time)
-    print('>>> Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"), '\n')
+    print('>>> Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
     end_time_cross_val = datetime.datetime.now()
     diff = end_time_cross_val-start_time_cross_val
-    pr.time_taken_by_cross_val = diff.total_seconds()
-    print('Updated time_taken_by_cross_val:', pr.time_taken_by_cross_val)
+    pr.change_time_onthefly(time_cv=diff.total_seconds())
+    print('Updated time_taken_by_cross_val:', pr.time_taken_by_cross_val,'\n')
     return best_param, picklename, get_one_second, updated_test_time[0]
 
 
