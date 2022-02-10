@@ -23,18 +23,11 @@ def olymptrade_update_hour(interval_typew=pr.quote_interval_typew):
 def olymptrade_time_and_quote(hour_front, hour_back, min_front, min_back,
                               interval_typew=pr.quote_interval_typew, interval_price_wait=pr.quote_interval_pricewait):
 
-    current_hour = datetime.datetime.now().hour
-    if not pr.test_cross_val_trading:
-        input_hour = int(hour_front+hour_back)
-        if current_hour == input_hour:
-            pag.click(x=pr.olymp_hr[0], y=pr.olymp_hr[1])
-    else:
-        # Click on Olymptrade Hour, last digit
-        pag.click(x=pr.olymp_hr[0], y=pr.olymp_hr[1])
-        pag.typewrite(['backspace', 'backspace'], interval=interval_typew)
-        pag.typewrite([hour_front])
-        pag.typewrite([hour_back], interval=interval_typew)
-
+    # Click on Olymptrade Hour, last digit
+    pag.click(x=pr.olymp_hr[0], y=pr.olymp_hr[1])
+    pag.typewrite(['backspace', 'backspace'], interval=interval_typew)
+    pag.typewrite([hour_front])
+    pag.typewrite([hour_back], interval=interval_typew)
 
     # Click on Olymptrade Min, last digit
     pag.typewrite(['tab'], interval=0)
