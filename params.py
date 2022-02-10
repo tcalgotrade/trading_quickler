@@ -90,8 +90,9 @@ def change_time_onthefly(time_cv=None, time_te=None): # https://is.gd/HqFpNJ
     if time_te is not None: time_taken_by_trade_execution = time_te
 
 # Trading Params
-total_trade = 3
-pred_delta_threshold = 0.1
+total_trade = 20
+quotediff_threshold = 0.01
+quotediff2_threshold = 0.01
 time_to_get_quote_seconds = 2.1
 interval_typew = 0.1
 quote_interval_pricewait = 0.4

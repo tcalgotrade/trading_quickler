@@ -5,7 +5,9 @@ from tkinter import Tk
 import pickle
 import params as pr
 import utility as ut
+import win32clipboard
 import logging as lg
+
 
 
 def olymptrade_update_hour(interval_typew=pr.interval_typew):
@@ -61,7 +63,7 @@ def get_one_now():
 
     if pr.test_cross_val_trading and pr.cross_val_past:
         hour_front = pr.test_hour[0]; hour_back = pr.test_hour[1]
-        min_front = pr.test_minute[0]; min_back = pr.test_minute[0]
+        min_front = pr.test_minute[0]; min_back = pr.test_minute[1]
 
     # Check if folder for today exists
     if not os.path.isdir(pr.data_store_location + date + '/'):
@@ -70,7 +72,9 @@ def get_one_now():
     olymptrade_time_and_quote(hour_front=hour_front, hour_back=hour_back, min_front=min_front, min_back=min_back)
 
     # Save clipboard to pickle file
-    data = Tk().clipboard_get()
+    win32clipboard.OpenClipboard()
+    data = win32clipboard.GetClipboardData() #Tk().clipboard_get()
+    win32clipboard.CloseClipboard()
     data = clean_get(data)
     with open(pr.data_store_location+date+'/'+hour_front+hour_back+min_front+min_back, 'wb') as f:
         pickle.dump(data, f)
@@ -99,7 +103,9 @@ def get_some(hours_list, minutes_list):
         olymptrade_time_and_quote(hour_front=hour_front, hour_back=hour_back, min_front=minute_front,
                                   min_back=minute_back)
         # Save clipboard to pickle file
-        data = Tk().clipboard_get()
+        win32clipboard.OpenClipboard()
+        data = win32clipboard.GetClipboardData() #Tk().clipboard_get()
+        win32clipboard.CloseClipboard()
         data = clean_get(data)
         with open(pr.data_store_location+date+'/'+hour_front+hour_back+minute_front+minute_back, 'wb') as f:
             pickle.dump(data, f)
@@ -114,7 +120,9 @@ def get_some(hours_list, minutes_list):
             olymptrade_time_and_quote(hour_front=hour_front, hour_back=hour_back, min_front=minute_front,
                                       min_back=minute_back)
             # Save clipboard to pickle file
-            data = Tk().clipboard_get()
+            win32clipboard.OpenClipboard()
+            data = win32clipboard.GetClipboardData() # Tk().clipboard_get()
+            win32clipboard.CloseClipboard()
             data = clean_get(data)
             with open(pr.data_store_location+date+'/'+hour_front+hour_back+minute_front+minute_back, 'wb') as f:
                 pickle.dump(data, f)
@@ -161,7 +169,7 @@ if __name__ == '__main__':
     if pr.test_get_some:
         get_some(hours_list=[12], minutes_list=[0])
     if pr.test_build_dataset_last_t:
-        build_dataset_last_t_minutes(t=2, isTrading=1)
+        build_dataset_last_t_minutes(t=10, isTrading=1)
         print('Time now is:', datetime.datetime.now())
     if pr.test_build_dataset:
         build_dataset(hours=[10,12,14,16,18,20,22], mins=range(28,49))

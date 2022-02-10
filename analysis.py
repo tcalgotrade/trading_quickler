@@ -99,7 +99,7 @@ def load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
         df['quote_diff2'] = df['quote_diff'].diff()
 
         # Rearrange cols for tidiness, https://is.gd/QNzlbu
-        df = df[['time', 'time_diff', 'quote', 'quote_diff', 'quote_diff2']]
+        df = df[['time', 'time_diff', 'quote_diff', 'quote_diff2']]
 
         # Drop of 1st 2 row (oldest data point) as it contains NaN
         df = df.iloc[2:, :]
@@ -117,10 +117,14 @@ def load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
             print('Min time diff: ', df['time_diff'].min())
             print('Avg time diff: ', df['time_diff'].mean())
             print('Std Dev time diff: ', df['time_diff'].std())
-            print('Max quote: ', df['quote'].max())
-            print('Min quote: ', df['quote'].min())
-            print('Avg quote: ', df['quote'].mean())
-            print('Std Dev quote: ', df['quote'].std())
+            print('Max quote_diff: ', df['quote_diff'].max())
+            print('Min quote_diff: ', df['quote_diff'].min())
+            print('Avg quote_diff: ', df['quote_diff'].mean())
+            print('Std Dev quote_diff: ', df['quote_diff'].std())
+            print('Max quote_diff2: ', df['quote_diff2'].max())
+            print('Min quote_diff2: ', df['quote_diff2'].min())
+            print('Avg quote_diff2: ', df['quote_diff2'].mean())
+            print('Std Dev quote_diff2: ', df['quote_diff2'].std())
             print('Types of our cols: \n', df.dtypes, '\n')
 
     except Exception:
@@ -134,7 +138,7 @@ def load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
 def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg=0, isTrading=0):
 
     # total variance of data
-    total_var = np.var(df['quote'])
+    total_var = np.var([df['quote_diff'], df['quote_diff2']])
 
     # Get rows and cols of dataframe
     r, c = df.shape
@@ -160,9 +164,14 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
     if isTrg:
         traintime_pts = round(traintime / dt)
         testtime_pts = round(testtime / dt)
+        if traintime_pts < 0 or testtime_pts < 0:
+            print('Invalid train & test time points :', traintime_pts, testtime_pts, dt)
+            return -1, 0
         if warmup > 0: warmup_pts = round(warmup / dt)
         if warmup == -1: warmup_pts = r - (traintime_pts+testtime_pts)
-        if warmup < -1: print('Invalid warmup seconds while trg', warmup) ; return -1, 0
+        if warmup < -1:
+            print('Invalid warmup seconds while trg', warmup)
+            return -1, 0
         warmtrain_pts = warmup_pts + traintime_pts
         maxtime_pts = warmtrain_pts + testtime_pts
 
@@ -170,16 +179,21 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
         # When trading, we do not need test data.
         traintime_pts = round(traintime / dt)
         testtime_pts = round(testtime / dt)
+        if traintime_pts < 0 or testtime_pts < 0:
+            print('Invalid train & test time points :', traintime_pts, testtime_pts, dt)
+            return -1, 0
         if warmup > 0: warmup_pts = round(warmup / dt)
         if warmup == -1: warmup_pts = r - traintime_pts
-        if warmup < -1: print('Invalid warmup seconds while trading', warmup) ; return -1, 0
+        if warmup < -1:
+            print('Invalid warmup seconds while trg', warmup)
+            return -1, 0
         warmtrain_pts = warmup_pts + traintime_pts
         maxtime_pts = warmtrain_pts
 
     if maxtime_pts > r: print('Not enough data for desired maxtime_pts vs rows', maxtime_pts, r) ; return -1, 0
 
     # input dimension
-    d = 3
+    d = 2
     # number of time delay taps
     k = k
     # size of linear part of feature vector
@@ -209,7 +223,7 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
     Is index 0 suppose to be oldest or newest time in data? : oldest
     """
     try:
-        consolidated_array = np.array([df['quote'].to_numpy(), df['quote_diff'].to_numpy(), df['quote_diff2'].to_numpy()])
+        consolidated_array = np.array([df['quote_diff'].to_numpy(), df['quote_diff2'].to_numpy()])
         for delay in range(k):
             for j in range(delay, maxtime_pts):
                 x[d * delay: d * (delay + 1), j] = consolidated_array[:, j-delay]
@@ -340,23 +354,18 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
         if isTrg:
             ground_truth = x[0:d, warmtrain_pts - 1:warmtrain_pts + testtime_pts - 1]
             test_predictions = x_test[0:d, 0:testtime_pts]
-            # We compute price diff between then and now
-            ground_truth_quote_delta = ground_truth[0, -1] - ground_truth[0, 0]
-            test_predictions_quote_delta = test_predictions[0, -1] - test_predictions[0, 0]
             # We sum up price diffs to find out whether we will be up or down at desired test time.
-            ground_truth_quotediff_sum = np.sum(ground_truth[1,1:])
-            test_predictions_quotediff_sum = np.sum(test_predictions[1,1:])
+            ground_truth_quotediff_sum = np.sum(ground_truth[0,1:])
+            test_predictions_quotediff_sum = np.sum(test_predictions[0,1:])
             # We sum up diffs of price diffs to find out if the change is increasing or not.
-            ground_truth_quotediff2_sum = np.sum(ground_truth[2, 1:])
-            test_predictions_quotediff2_sum = np.sum(test_predictions[2, 1:])
+            ground_truth_quotediff2_sum = np.sum(ground_truth[1, 1:])
+            test_predictions_quotediff2_sum = np.sum(test_predictions[1, 1:])
         if isTrading:
             test_predictions = x_test[0:d, 0:testtime_pts]
-            # We compute price diff between then and now
-            test_predictions_quote_delta = test_predictions[0, -1] - test_predictions[0, 0]
             # We sum up price diffs to find out whether we will be up or down at desired test time.
-            test_predictions_quotediff_sum = np.sum(test_predictions[1,1:])
+            test_predictions_quotediff_sum = np.sum(test_predictions[0,1:])
             # We sum up diffs of price diffs to find out if the change is increasing or not.
-            test_predictions_quotediff2_sum = np.sum(test_predictions[2, 1:])
+            test_predictions_quotediff2_sum = np.sum(test_predictions[1, 1:])
 
         if isDebug:
             print('warm:', warmup)
@@ -379,8 +388,6 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
             print('test_predictions: \n', test_predictions, '\n')
             print('Shape of ground_truth:', ground_truth.shape)
             print('Shape of test_predictions:', test_predictions.shape)
-            print('ground_truth_quote_delta:', ground_truth_quote_delta)
-            print('test_predictions_quote_delta:', test_predictions_quote_delta)
             print('ground_truth_quotediff_sum:', ground_truth_quotediff_sum)
             print('test_predictions_quotediff_sum:', test_predictions_quotediff_sum)
             print('ground_truth_quotediff2_sum:', ground_truth_quotediff2_sum)
@@ -395,8 +402,6 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
                 print('Shape of test_predictions:', test_predictions.shape)
                 print('ground_truth: \n', ground_truth)
                 print('test_predictions: \n', test_predictions, '\n')
-                print('ground_truth_quote_delta:', ground_truth_quote_delta)
-                print('test_predictions_quote_delta:', test_predictions_quote_delta)
                 print('ground_truth_quotediff_sum:', ground_truth_quotediff_sum)
                 print('test_predictions_quotediff_sum:', test_predictions_quotediff_sum)
                 print('ground_truth_quotediff2_sum:', ground_truth_quotediff2_sum)
@@ -405,31 +410,27 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
                 print('training nrmse: ' , trg_nrmse)
                 print('Shape of test_predictions:', test_predictions.shape)
                 print('test_predictions: \n', test_predictions, '\n')
-                print('test_predictions_quote_delta:', test_predictions_quote_delta)
                 print('test_predictions_quotediff_sum:', test_predictions_quotediff_sum)
                 print('test_predictions_quotediff2_sum:', test_predictions_quotediff2_sum)
 
         # Return actions to do. 0 is buy down. 1 is buy up. -1 is do nothing.
         if isTrg:
-            if ground_truth_quote_delta < 0 and test_predictions_quote_delta < 0 \
-                    and ground_truth_quotediff_sum < 0 and test_predictions_quotediff_sum < 0:
-                return 0, trg_nrmse, test_nrmse, ground_truth_quote_delta, test_predictions_quote_delta, \
-                       ground_truth_quotediff_sum, test_predictions_quotediff_sum, ground_truth_quotediff2_sum, test_predictions_quotediff2_sum
-            if ground_truth_quote_delta > 0 and test_predictions_quote_delta > 0 \
-                    and ground_truth_quotediff_sum > 0 and test_predictions_quotediff_sum > 0:
-                return 1, trg_nrmse, test_nrmse, ground_truth_quote_delta, test_predictions_quote_delta, \
-                       ground_truth_quotediff_sum, test_predictions_quotediff_sum, ground_truth_quotediff2_sum, test_predictions_quotediff2_sum
+            if ground_truth_quotediff_sum < 0 and test_predictions_quotediff_sum < 0 \
+                    and ground_truth_quotediff2_sum > 0 and test_predictions_quotediff2_sum > 0:
+                return 0, trg_nrmse, test_nrmse, ground_truth_quotediff_sum, test_predictions_quotediff_sum, ground_truth_quotediff2_sum, test_predictions_quotediff2_sum
+            if ground_truth_quotediff_sum > 0 and test_predictions_quotediff_sum > 0 \
+                    and ground_truth_quotediff2_sum > 0 and test_predictions_quotediff2_sum > 0:
+                return 1, trg_nrmse, test_nrmse, ground_truth_quotediff_sum, test_predictions_quotediff_sum, ground_truth_quotediff2_sum, test_predictions_quotediff2_sum
             else:
-                return -1, trg_nrmse, test_nrmse, ground_truth_quote_delta, test_predictions_quote_delta, \
-                       ground_truth_quotediff_sum, test_predictions_quotediff_sum, ground_truth_quotediff2_sum, test_predictions_quotediff2_sum
+                return -1, trg_nrmse, test_nrmse, ground_truth_quotediff_sum, test_predictions_quotediff_sum, ground_truth_quotediff2_sum, test_predictions_quotediff2_sum
 
         if isTrading:
-            if test_predictions_quote_delta < 0 and test_predictions_quotediff_sum < 0:
-                return 0, trg_nrmse, test_predictions_quote_delta, test_predictions_quotediff_sum, test_predictions_quotediff2_sum
-            if test_predictions_quote_delta > 0 and test_predictions_quotediff_sum > 0:
-                return 1, trg_nrmse, test_predictions_quote_delta, test_predictions_quotediff_sum, test_predictions_quotediff2_sum
+            if test_predictions_quotediff_sum < 0 and test_predictions_quotediff2_sum > 0:
+                return 0, trg_nrmse, test_predictions_quotediff_sum, test_predictions_quotediff2_sum
+            if test_predictions_quotediff_sum > 0 and test_predictions_quotediff2_sum > 0:
+                return 1, trg_nrmse, test_predictions_quotediff_sum, test_predictions_quotediff2_sum
             else:
-                return 1, trg_nrmse, test_predictions_quote_delta, test_predictions_quotediff_sum, test_predictions_quotediff2_sum
+                return 1, trg_nrmse, test_predictions_quotediff_sum, test_predictions_quotediff2_sum
 
     except Exception:
         print(traceback.format_exc())
@@ -534,34 +535,34 @@ def cross_val_trading(lookback_t):
         # [[train, delay, NRMSE, lookback_t, test]]
         if current_nrmse < first_best_nrmse and pr.number_best_param >=1:
             first_best_nrmse = current_nrmse
-            best_param.pop(0) ; best_param.insert(0, [current_param[3], current_param[4], first_best_nrmse, current_param[10], current_param[5]])
+            best_param.pop(0) ; best_param.insert(0, [current_param[3], current_param[4], first_best_nrmse, current_param[10], round(current_param[5],3)])
         if second_best_nrmse > current_nrmse > first_best_nrmse and pr.number_best_param >=2:
             second_best_nrmse = current_nrmse
-            best_param.pop(1) ; best_param.insert(1, [current_param[3], current_param[4], second_best_nrmse, current_param[10], current_param[5]])
+            best_param.pop(1) ; best_param.insert(1, [current_param[3], current_param[4], second_best_nrmse, current_param[10], round(current_param[5],3)])
         if third_best_nrmse > current_nrmse > second_best_nrmse and pr.number_best_param >=3:
             third_best_nrmse = current_nrmse
-            best_param.pop(2) ; best_param.insert(2, [current_param[3], current_param[4], third_best_nrmse, current_param[10], current_param[5]])
+            best_param.pop(2) ; best_param.insert(2, [current_param[3], current_param[4], third_best_nrmse, current_param[10], round(current_param[5],3)])
         if fourth_best_nrmse > current_nrmse > third_best_nrmse and pr.number_best_param >=4:
             fourth_best_nrmse = current_nrmse
-            best_param.pop(3) ; best_param.insert(3, [current_param[3], current_param[4], fourth_best_nrmse, current_param[10], current_param[5]])
+            best_param.pop(3) ; best_param.insert(3, [current_param[3], current_param[4], fourth_best_nrmse, current_param[10], round(current_param[5],3)])
         if fifth_best_nrmse > current_nrmse > fourth_best_nrmse and pr.number_best_param >=5:
             fifth_best_nrmse = current_nrmse
-            best_param.pop(4) ; best_param.insert(4, [current_param[3], current_param[4], fifth_best_nrmse, current_param[10], current_param[5]])
+            best_param.pop(4) ; best_param.insert(4, [current_param[3], current_param[4], fifth_best_nrmse, current_param[10], round(current_param[5],3)])
         if sixth_best_nrmse > current_nrmse > fifth_best_nrmse and pr.number_best_param >=6:
             sixth_best_nrmse = current_nrmse
-            best_param.pop(5) ; best_param.insert(5, [current_param[3], current_param[4], sixth_best_nrmse, current_param[10], current_param[5]])
+            best_param.pop(5) ; best_param.insert(5, [current_param[3], current_param[4], sixth_best_nrmse, current_param[10], round(current_param[5],3)])
         if seventh_best_nrmse > current_nrmse > sixth_best_nrmse and pr.number_best_param >=7:
             seventh_best_nrmse = current_nrmse
-            best_param.pop(6) ; best_param.insert(6, [current_param[3], current_param[4], seventh_best_nrmse, current_param[10], current_param[5]])
+            best_param.pop(6) ; best_param.insert(6, [current_param[3], current_param[4], seventh_best_nrmse, current_param[10], round(current_param[5],3)])
         if eighth_best_nrmse > current_nrmse > seventh_best_nrmse and pr.number_best_param >=8:
             eighth_best_nrmse = current_nrmse
-            best_param.pop(7) ; best_param.insert(7, [current_param[3], current_param[4], eighth_best_nrmse, current_param[10], current_param[5]])
+            best_param.pop(7) ; best_param.insert(7, [current_param[3], current_param[4], eighth_best_nrmse, current_param[10], round(current_param[5],3)])
         if ninth_best_nrmse > current_nrmse > eighth_best_nrmse and pr.number_best_param >=9:
             ninth_best_nrmse = current_nrmse
-            best_param.pop(8) ; best_param.insert(8, [current_param[3], current_param[4], ninth_best_nrmse, current_param[10], current_param[5]])
+            best_param.pop(8) ; best_param.insert(8, [current_param[3], current_param[4], ninth_best_nrmse, current_param[10], round(current_param[5],3)])
         if tenth_best_nrmse > current_nrmse > ninth_best_nrmse and pr.number_best_param >=10:
             tenth_best_nrmse = current_nrmse
-            best_param.pop(9) ; best_param.insert(9, [current_param[3], current_param[4], tenth_best_nrmse, current_param[10], current_param[5]])
+            best_param.pop(9) ; best_param.insert(9, [current_param[3], current_param[4], tenth_best_nrmse, current_param[10], round(current_param[5],3)])
 
     if pr.test_cross_val_trading:
         print('Best params [train, delay, NRMSE, lookback_t, test]:', best_param)
@@ -580,7 +581,8 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()
     # Force a manual cross val for trading
     if pr.test_cross_val_trading:
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=0)
+        if pr.cross_val_build_data or not pr.cross_val_past:
+            gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=0)
         cross_val_trading(lookback_t=pr.lookback_t)
 
     # Quick test load.
@@ -590,7 +592,7 @@ if __name__ == '__main__':
     # Quick test compute
     if pr.test_compute_function:
         df = load(picklename=pr.data_store_location + '08022022/1359', lookback=pr.lookback_t ,seconds=15, isDebug=True)
-        result = compute_ngrc(df, isDebug=0, isInfo=1, warmup=-1, train=10, k=5, test=10, ridge_param=0, isTrg=1,
+        result = compute_ngrc(df, isDebug=0, isInfo=1, warmup=-1, train=10, k=2, test=10, ridge_param=8, isTrg=1,
                               isTrading=0)
         print('Result:', result)
 

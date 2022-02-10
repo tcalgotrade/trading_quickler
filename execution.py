@@ -9,6 +9,7 @@ import multiprocessing
 import pickle
 import params as pr
 import utility as ut
+import win32clipboard
 import logging
 
 pag.FAILSAFE = True
@@ -28,8 +29,6 @@ def execute(signal):
     if signal == 0:
         pag.click(x=pr.oylmp_down[0], y=pr.oylmp_down[1])
         print('Bought DOWN')
-    if signal == -1:
-        print('No trade taken: all results are outside of pred_delta tolerance.')
 
     now = datetime.datetime.now().strftime("%H:%M:%S.%f")
     print('>>> Time @ execute complete : ', now)
@@ -65,7 +64,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         print('ridge_range:',pr.ridge_range,'\nthreshold_test_nrmse:',pr.threshold_test_nrmse, '\n')
         print('Trading Params:')
         print('total_trade:', pr.total_trade,'\nlookback_t:', pr.lookback_t)
-        print('pred_delta_threshold:',pr.pred_delta_threshold)
+        print('pred_delta_threshold:', pr.quotediff_threshold)
         print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds,'\n')
         if setup_check == 'Cancel':
             print('\nCancelled by user.')
@@ -88,7 +87,11 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         now = datetime.datetime.now().strftime('%H:%M:%S.%f')
         now = datetime.datetime.strptime(now, '%H:%M:%S.%f')
         data_time = df['time'].astype(str)
-        data_last_time = datetime.datetime.strptime(data_time.iloc[-1], '%H:%M:%S.%f')
+        if len(data_time.iloc[-1]) == 8:
+            data_last_time_string = data_time.iloc[-1] +'.000'
+        else:
+            data_last_time_string = data_time.iloc[-1]
+        data_last_time = datetime.datetime.strptime(data_last_time_string, '%H:%M:%S.%f')
         diff = now - data_last_time
         if diff.total_seconds() < 0:
             print('Time mismatch - Diff of ', diff.total_seconds())
@@ -110,7 +113,9 @@ def get_latest_trade_record(isPrint):
     pag.click(x=pr.olymp_first_trade_record[0], y=pr.olymp_first_trade_record[1], interval=0.2)
     pag.hotkey('ctrl', 'a', interval=0.1)
     pag.hotkey('ctrl', 'c', interval=0.1)
-    data = Tk().clipboard_get()
+    win32clipboard.OpenClipboard()
+    data = win32clipboard.GetClipboardData() #Tk().clipboard_get()
+    win32clipboard.CloseClipboard()
     start_index = data.rfind("Date and time")
     data = data[start_index+len("Date and time"):start_index+len("Date and time")+119]
     record = []
@@ -149,6 +154,8 @@ def trade_small():
 
 def update_time_betw_execute_trade_open(execute_time,trade_open_time):
     print('>>> Time @ trade execution:',execute_time)
+    if len(trade_open_time) == 8:
+        trade_open_time += '.000'
     trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S.%f')
     # Calc difference between. We should expect trade_open_time to be later.
     diff = trade_open_time - execute_time
@@ -177,8 +184,6 @@ def trade_execution(cycle, trade):
     print('Dataframe Statistics:')
     print('>>> Time @ first row:', df['time'].iloc[0])
     print('>>> Time @ last row:', df['time'].iloc[-1])
-    print('Mean of quote history:', np.mean(df['quote']))
-    print('Std Dev of quote history:', np.std(df['quote']))
 
     # Check current min/sec vs min/sec of last row of dataframe.
     time_mismatch = 0
@@ -186,10 +191,10 @@ def trade_execution(cycle, trade):
         time_mismatch = 1
 
     # Compute what trade actions to take
-    # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
+    # Returns : 0/1/-1 , trg_nrmse, test_predictions_quotediff_sum, test_predictions_quotediff2_sum
     results = []
     if pr.cross_val_specify_test: test_points = pr.test_points
-    else: test_points = [updated_test_time-0.5,updated_test_time, updated_test_time+0.5]
+    else: test_points = [updated_test_time-0.75,updated_test_time, updated_test_time+0.75]
     for t in test_points:
         results.append(
             an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=-1, train=best_param[0][0], k=best_param[0][1], test=t,
@@ -198,20 +203,29 @@ def trade_execution(cycle, trade):
     print('*** Updated_test_time chosen for trade prediction:', updated_test_time)
 
     # Consolidate results for trade execution.
-    test_predictions_quote_delta = []
-    for result in results:
-        test_predictions_quote_delta.append(round(result[1],2))
-
     action_sum = 0
     for result in results:
         action_sum += result[0]
 
+    test_predictions_quotediffsum = []
+    for result in results:
+        test_predictions_quotediffsum.append(round(result[2],2))
+
+    test_predictions_quotediff2sum = []
+    for result in results:
+        test_predictions_quotediff2sum.append(round(result[3],2))
+
     # Calc basic stats of delta of price prediction.
-    mean_pred_delta = np.mean(test_predictions_quote_delta)
-    stdev_pred_delta = np.std(test_predictions_quote_delta)
-    print('All results pred delta:', test_predictions_quote_delta)
-    print('Average of all results pred delta:', mean_pred_delta)
-    print('Std Dev of all results pred delta:', stdev_pred_delta, '\n')
+    mean_quotediffsum = np.mean(test_predictions_quotediffsum)
+    stdev_quotediffsum = np.std(test_predictions_quotediffsum)
+    print('All results quotediffsum:', test_predictions_quotediffsum)
+    print('Average of all results quotediffsum:', mean_quotediffsum)
+    print('Std Dev of all results quotediffsuma:', stdev_quotediffsum)
+    mean_quotediff2sum = np.mean(test_predictions_quotediff2sum)
+    stdev_quotediff2sum = np.std(test_predictions_quotediff2sum)
+    print('All results quotediff2sum:', test_predictions_quotediff2sum)
+    print('Average of all results quotediff2sum:', mean_quotediff2sum)
+    print('Std Dev of all results quotediff2sum:', stdev_quotediff2sum, '\n')
 
     # Trade Execution
     if time_mismatch != 1:
@@ -219,8 +233,8 @@ def trade_execution(cycle, trade):
         if action_sum == 0 or action_sum == len(results):
             print('Direction agreement: YES ')
             # Check if mean of delta is above threshold.
-            if abs(mean_pred_delta) > pr.pred_delta_threshold:
-                print('Threshold met: YES')
+            if abs(mean_quotediffsum) > pr.quotediff_threshold and mean_quotediff2sum > pr.quotediff2_threshold:
+                print('Thresholds met: YES')
                 executed_time = execute(signal=results[0][0])
                 # Check if agreement is no action
                 if results[0][0] != -1:
@@ -231,9 +245,12 @@ def trade_execution(cycle, trade):
                         end(cycle,trade)
                         return -1, cycle, trade
 
-    if time_mismatch == 1: print('No execution - Time Mismatch: YES')
-    if action_sum != 0 and action_sum != len(results): print('No execution - Direction agreement: NO')
-    if abs(mean_pred_delta) < pr.pred_delta_threshold: print('No execution - Threshold met: NO')
+    if time_mismatch == 1:
+        print('No execution - Time Mismatch: YES')
+    if action_sum != 0 or action_sum != len(results):
+        print('No execution - Direction agreement: NO')
+    if abs(mean_quotediffsum) < pr.quotediff_threshold or mean_quotediff2sum < pr.quotediff2_threshold:
+        print('No execution - Threshold met: NO')
 
     cycle += 1
     return 0 , cycle, trade
