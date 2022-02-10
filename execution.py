@@ -108,6 +108,7 @@ def get_latest_trade_record(isPrint):
     # Refresh to make sure we have latest trade.
     pag.hotkey('f5', interval=pr.traderecord_interval_refresh)
     pag.click(x=pr.olymp_first_trade_record[0], y=pr.olymp_first_trade_record[1], interval=0.2)
+    Tk().clipboard_clear()
     pag.hotkey('ctrl', 'a', interval=0.1)
     pag.hotkey('ctrl', 'c', interval=0.1)
     data = Tk().clipboard_get()
@@ -245,7 +246,7 @@ if __name__ == '__main__':
     # tradelog_name = "trade_execution_"+str(tradelog_datetime)+".log"
     # logging.basicConfig(filename=tradelog_name, level=logging.DEBUG) # https://www.loggly.com/?p=76609
 
-    multiprocessing.freeze_support() ; cycle = 1 ; trade = 0 ;
+    multiprocessing.freeze_support() ; cycle = 1 ; trade = 0
     while True:
         print('\n/****************************************************************************/\n')
         print('Cycle # : ', cycle) ; print('Trade executed: ', trade, '\n')

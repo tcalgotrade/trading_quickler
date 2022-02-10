@@ -563,36 +563,14 @@ def cross_val_trading(lookback_t):
     return best_param, picklename, get_one_second, updated_test_time[0]
 
 
-def cross_val_manual():
-    print(' >>> Time @ Start : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
-
-    # Get filenames
-    dates = ['04022022']  # [26012022, 27012022, 28012022]
-    hours = [14]
-    mins = range(45, 46)
-    files = ut.filenames(dates=dates, hours=hours, mins=mins, files=[])
-
-    # Get all possible combi of params
-    # Get all possible combinations of params
-    bag_of_params = list(itertools.product(files, pr.warm_range, pr.train_range, pr.delay_range, pr.test_range, pr.ridge_range, pr.threshold_test_nrmse))
-    print('# of params:', len(bag_of_params))
-
-    cross_val_multiproc(params=bag_of_params)
-    print(' >>> Time @ End : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
-
-    return
-
-
 if __name__ == '__main__':
     multiprocessing.freeze_support()
     # Force a manual cross val for trading
     if pr.test_cross_val_trading:
         gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=1)
         cross_val_trading(lookback_t=pr.lookback_t)
-        print(':', pr.time_taken_by_trade_execution, pr.time_taken_by_cross_val)
         gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=1)
         cross_val_trading(lookback_t=pr.lookback_t)
-        print(':', pr.time_taken_by_trade_execution, pr.time_taken_by_cross_val)
 
     # Quick test load.
     if pr.test_load_function:
