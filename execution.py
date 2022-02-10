@@ -263,7 +263,6 @@ if __name__ == '__main__':
         if cycle == 1:
             if checks(cycle, trade_start_chk=True) == 2:
                 break
-            gq.olymptrade_update_hour()
             checks(cycle1_warmup_chk=True)
             an.cross_val_trading(lookback_t=pr.lookback_t)
 
