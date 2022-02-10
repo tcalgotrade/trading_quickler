@@ -49,7 +49,7 @@ if current_system == 'z400':
 data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
 
 # Levers for testing
-find_pos = True
+find_pos = False
 test_get_one = False
 test_get_some = False
 test_build_dataset_last_t = False
@@ -79,7 +79,7 @@ number_best_param = 5 # Minimally 1
 
 # Params for how far ahead to predict
 time_taken_by_cross_val = -1 # GLOBAL: updated every cycle.
-time_taken_by_trade_execution = -1 # GLOBAL: updated every cycle.
+time_taken_by_trade_execution = 1.55
 time_betw_cross_val_and_execution = 0.3 # Hardcode
 def change_time_onthefly(time_cv=None, time_te=None): # https://is.gd/HqFpNJ
     global time_taken_by_cross_val

@@ -4,21 +4,18 @@ import numpy as np
 import sys
 import datetime
 import pandas as pd
-import pyautogui as pag
 import multiprocessing
 from multiprocessing import Pool
 import istarmap
 import warnings
 import itertools
 import get_quote as gq
-import re
 import glob
 import tqdm
 import traceback
 import params as pr
 import utility as ut
 import logging as lg
-import execution as ex
 
 # Display dataframe & arrays in full glory
 np.set_printoptions(threshold=sys.maxsize)
@@ -468,20 +465,6 @@ def cross_val_multiproc(params):
     return
 
 
-def update_time_betw_execute_trade_open():
-    execute_time = ex.demo_trade()
-    print('>>> Time @ Demo trade execution:',execute_time)
-    trade_open_time = ex.get_latest_trade_record(isPrint=False)
-    trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S.%f')
-    # Calc difference between. We should expect trade_open_time to be later.
-    diff = trade_open_time - execute_time
-    pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
-    pag.click(x=pr.olymp_usd_account[0], y=pr.olymp_usd_account[1], interval=0.5)
-    pr.change_time_onthefly(time_te=diff.total_seconds())
-    print('*** Updated time_taken_by_trade_execution:', pr.time_taken_by_trade_execution, '\n')
-    return
-
-
 def cross_val_trading(lookback_t):
 
     # Get date & time
@@ -602,14 +585,11 @@ def cross_val_manual():
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
-    update_time_betw_execute_trade_open()
     # Force a manual cross val for trading
     if pr.test_cross_val_trading:
-        ex.update_time_betw_execute_trade_open()
         gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=1)
         cross_val_trading(lookback_t=pr.lookback_t)
         print(':', pr.time_taken_by_trade_execution, pr.time_taken_by_cross_val)
-        ex.update_time_betw_execute_trade_open()
         gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=1)
         cross_val_trading(lookback_t=pr.lookback_t)
         print(':', pr.time_taken_by_trade_execution, pr.time_taken_by_cross_val)

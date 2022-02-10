@@ -128,12 +128,34 @@ def get_latest_trade_record(isPrint):
     ut.tab_switch(tab=1)
     return record[2] # time of trade open on platform.
 
+
 def demo_trade():
     pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
     pag.click(x=pr.olymp_demo_account[0], y=pr.olymp_demo_account[1], interval=0.5)
     pag.click(x=pr.olymp_up[0], y=pr.olymp_up[1], interval=0.5)
     now = datetime.datetime.now().strftime('%H:%M:%S.%f')
     return datetime.datetime.strptime(now, '%H:%M:%S.%f')
+
+
+def usd_trade_small():
+    pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
+    pag.click(x=pr.olymp_usd_account[0], y=pr.olymp_usd_account[1], interval=0.5)
+    pag.click(x=pr.olymp_up[0], y=pr.olymp_up[1], interval=0.5)
+    now = datetime.datetime.now().strftime('%H:%M:%S.%f')
+    return datetime.datetime.strptime(now, '%H:%M:%S.%f')
+
+
+def get_time_betw_execute_trade_open():
+    execute_time = usd_trade_small()
+    print('>>> Time @ USD trade execution:',execute_time)
+    trade_open_time = get_latest_trade_record(isPrint=False)
+    trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S.%f')
+    # Calc difference between. We should expect trade_open_time to be later.
+    diff = trade_open_time - execute_time
+    pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
+    pag.click(x=pr.olymp_usd_account[0], y=pr.olymp_usd_account[1], interval=0.5)
+    print('*** time_taken_by_trade_execution:', diff.total_seconds(), '\n')
+    return
 
 
 def trade_execution(cycle, trade):
@@ -241,7 +263,6 @@ if __name__ == '__main__':
         if cycle == 1:
             if checks(cycle, trade_start_chk=True) == 2:
                 break
-            an.update_time_betw_execute_trade_open()
             gq.olymptrade_update_hour()
             checks(cycle1_warmup_chk=True)
             an.cross_val_trading(lookback_t=pr.lookback_t)
@@ -255,7 +276,5 @@ if __name__ == '__main__':
             cycle = flow_control[1]
             trade = flow_control[2]
 
-        # Get time between trade execution to trade close by doing a demo trade.
-        an.update_time_betw_execute_trade_open()
         # Buld data up again in case the previous gets is not clean or full
         gq.build_dataset_last_t_minutes(t=pr.lookback_t , isTrading=1)
