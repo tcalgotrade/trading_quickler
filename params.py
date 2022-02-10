@@ -1,4 +1,4 @@
-current_system = 'rested'
+current_system = 'z400'
 asset_name = "Quickler"
 asset_duration = 5 # in seconds
 
@@ -9,7 +9,7 @@ if current_system == 'rested':
         olymp_up = (1812,580) # Half: (1812,580) Maximized: (3692, 580)
         oylmp_down = (1812,659) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (187,887)
-        olymp_day = ()
+        olymp_day = None
         olymp_account_switch = (1610,165)
         olymp_demo_account = (1502,267)
         olymp_usd_account = (1502,396)
@@ -18,7 +18,7 @@ if current_system == 'rested':
         olymp_up = (1800,683) # Half: (1812,580) Maximized: (3692, 580)
         oylmp_down = (1803,763) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (280,1001)
-        olymp_day = ()
+        olymp_day = None
     olymp_browser = (1722, 22)
     olymp_trade_record = (323,702)
     olymp_first_trade_record = (414,703)
@@ -31,6 +31,9 @@ if current_system == 'z400':
         oylmp_down = (888,389) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (171,572)
         olymp_day = None
+        olymp_account_switch = (689,105)
+        olymp_demo_account = (695,179)
+        olymp_usd_account = (695,263)
     if asset_name == 'EURUSD':
         olymp_hr = ()
         olymp_up = () # Half: (1812,580) Maximized: (3692, 580)
@@ -38,14 +41,15 @@ if current_system == 'z400':
         olymp_date = ()
         olymp_day = None
     olymp_browser = (521, 614)
-    olymp_trade_record = (67,454)
+    olymp_trade_record = (485,357)
+    olymp_first_trade_record = (120,458)
     click_start = (73, 722)
 
 # Data file location
 data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
 
 # Levers for testing
-find_pos = False
+find_pos = True
 test_get_one = False
 test_get_some = False
 test_build_dataset_last_t = False
@@ -84,7 +88,7 @@ def change_time_onthefly(time_cv=None, time_te=None): # https://is.gd/HqFpNJ
     if time_te is not None: time_taken_by_trade_execution = time_te
 
 # Trading Params
-total_trade = 5
+total_trade = 3
 pred_delta_threshold = 0.1
 time_to_get_quote_seconds = 2.1
 quote_interval_typew = 0.1
