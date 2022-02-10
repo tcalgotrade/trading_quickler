@@ -111,7 +111,6 @@ def get_latest_trade_record(isPrint):
     Tk().clipboard_clear()
     pag.hotkey('ctrl', 'a', interval=0.1)
     pag.hotkey('ctrl', 'c', interval=0.1)
-    data = Tk().clipboard_get()
     start_index = data.rfind("Date and time")
     data = data[start_index+len("Date and time"):start_index+len("Date and time")+119]
     record = []

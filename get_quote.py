@@ -36,7 +36,6 @@ def olymptrade_time_and_quote(hour_front, hour_back, min_front, min_back,
 
     # Instead of dragging, we click, select all and leave it to load func to clean up.
     pag.click(x=pr.click_start[0], y=pr.click_start[1])
-    Tk().clipboard_clear()
     pag.hotkey('ctrl', 'a')
     pag.hotkey('ctrl', 'c')
 
