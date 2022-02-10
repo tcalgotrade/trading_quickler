@@ -45,7 +45,7 @@ if current_system == 'z400':
 data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
 
 # Levers for testing
-find_pos = True
+find_pos = False
 test_get_one = False
 test_get_some = False
 test_build_dataset_last_t = False
