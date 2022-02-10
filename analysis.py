@@ -137,7 +137,7 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
     r, c = df.shape
 
     # time step
-    dt = np.round(df['time_diff'].dt.total_seconds().mean(),1)
+    dt = np.round(df['time_diff'].dt.total_seconds().mean(),2)
     # units of time to warm up NVAR. need to have warmup_pts >= 1, in seconds
     warmup = warmup
     # units of time to train for, in seconds

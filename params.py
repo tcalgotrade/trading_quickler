@@ -13,6 +13,7 @@ if current_system == 'rested':
         olymp_account_switch = (1610,165)
         olymp_demo_account = (1502,267)
         olymp_usd_account = (1502,396)
+        olymp_amount = (1852,320)
     if asset_name == 'EURUSD':
         olymp_hr = (164,1100)
         olymp_up = (1800,683) # Half: (1812,580) Maximized: (3692, 580)
@@ -34,6 +35,7 @@ if current_system == 'z400':
         olymp_account_switch = (689,105)
         olymp_demo_account = (695,179)
         olymp_usd_account = (695,263)
+        olymp_amount = ()
     if asset_name == 'EURUSD':
         olymp_hr = ()
         olymp_up = () # Half: (1812,580) Maximized: (3692, 580)
@@ -79,7 +81,7 @@ number_best_param = 5 # Minimally 1
 
 # Params for how far ahead to predict
 time_taken_by_cross_val = -1 # GLOBAL: updated every cycle.
-time_taken_by_trade_execution = 1.55
+time_taken_by_trade_execution = 1.5 # GLOBAL: updated after every trade.
 time_betw_cross_val_and_execution = 0.3 # Hardcode
 def change_time_onthefly(time_cv=None, time_te=None): # https://is.gd/HqFpNJ
     global time_taken_by_cross_val
@@ -91,7 +93,7 @@ def change_time_onthefly(time_cv=None, time_te=None): # https://is.gd/HqFpNJ
 total_trade = 3
 pred_delta_threshold = 0.1
 time_to_get_quote_seconds = 2.1
-quote_interval_typew = 0.1
-quote_interval_pricewait = 0.1
-demotrade_interval_refresh = 3
+interval_typew = 0.1
+quote_interval_pricewait = 0.4
+traderecord_interval_refresh = 3
 

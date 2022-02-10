@@ -8,7 +8,7 @@ import utility as ut
 import logging as lg
 
 
-def olymptrade_update_hour(interval_typew=pr.quote_interval_typew):
+def olymptrade_update_hour(interval_typew=pr.interval_typew):
     current_hour = datetime.datetime.now().strftime('%H')
     hour_front = current_hour[0]
     hour_back = current_hour[1]
@@ -21,19 +21,18 @@ def olymptrade_update_hour(interval_typew=pr.quote_interval_typew):
 
 
 def olymptrade_time_and_quote(hour_front, hour_back, min_front, min_back,
-                              interval_typew=pr.quote_interval_typew, interval_price_wait=pr.quote_interval_pricewait):
+                              interval_typew=pr.interval_typew, interval_price_wait=pr.quote_interval_pricewait):
 
     # Click on Olymptrade Hour, last digit
     pag.click(x=pr.olymp_hr[0], y=pr.olymp_hr[1])
-    pag.typewrite(['backspace', 'backspace'], interval=interval_typew)
+    pag.hotkey('ctrl', 'a')
     pag.typewrite([hour_front])
     pag.typewrite([hour_back], interval=interval_typew)
 
     # Click on Olymptrade Min, last digit
     pag.typewrite(['tab'], interval=0)
     pag.typewrite([min_front])
-    pag.typewrite([min_back], interval=interval_typew)
-    pag.typewrite(['enter'], interval=interval_price_wait)
+    pag.typewrite([min_back], interval=interval_price_wait)
 
     # Instead of dragging, we click, select all and leave it to load func to clean up.
     pag.click(x=pr.click_start[0], y=pr.click_start[1])

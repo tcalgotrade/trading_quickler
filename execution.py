@@ -31,8 +31,9 @@ def execute(signal):
     if signal == -1:
         print('No trade taken: all results are outside of pred_delta tolerance.')
 
-    print('>>> Time @ execute complete : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
-    return
+    now = datetime.datetime.now().strftime("%H:%M:%S.%f")
+    print('>>> Time @ execute complete : ', now)
+    return datetime.datetime.strptime(now, '%H:%M:%S.%f')
 
 
 def end(cycle, trade):
@@ -105,7 +106,7 @@ def get_latest_trade_record(isPrint):
     # Wait for trade to be registered
     time.sleep(pr.asset_duration-1)
     # Refresh to make sure we have latest trade.
-    pag.hotkey('f5', interval=pr.demotrade_interval_refresh)
+    pag.hotkey('f5', interval=pr.traderecord_interval_refresh)
     pag.click(x=pr.olymp_first_trade_record[0], y=pr.olymp_first_trade_record[1], interval=0.2)
     pag.hotkey('ctrl', 'a', interval=0.1)
     pag.hotkey('ctrl', 'c', interval=0.1)
@@ -137,24 +138,22 @@ def demo_trade():
     return datetime.datetime.strptime(now, '%H:%M:%S.%f')
 
 
-def usd_trade_small():
-    pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
-    pag.click(x=pr.olymp_usd_account[0], y=pr.olymp_usd_account[1], interval=0.5)
+def trade_small():
+    pag.click(x=pr.olymp_amount[0], y=pr.olymp_amount[1], interval=0.1)
+    pag.hotkey('ctrl', 'a')
+    pag.typewrite(['1'])
     pag.click(x=pr.olymp_up[0], y=pr.olymp_up[1], interval=0.5)
     now = datetime.datetime.now().strftime('%H:%M:%S.%f')
     return datetime.datetime.strptime(now, '%H:%M:%S.%f')
 
 
-def get_time_betw_execute_trade_open():
-    execute_time = usd_trade_small()
-    print('>>> Time @ USD trade execution:',execute_time)
-    trade_open_time = get_latest_trade_record(isPrint=False)
+def update_time_betw_execute_trade_open(execute_time,trade_open_time):
+    print('>>> Time @ trade execution:',execute_time)
     trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S.%f')
     # Calc difference between. We should expect trade_open_time to be later.
     diff = trade_open_time - execute_time
-    pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
-    pag.click(x=pr.olymp_usd_account[0], y=pr.olymp_usd_account[1], interval=0.5)
-    print('*** time_taken_by_trade_execution:', diff.total_seconds(), '\n')
+    pr.change_time_onthefly(time_te=diff.total_seconds())
+    print('*** Updated time_taken_by_trade_execution to:', diff.total_seconds(), '\n')
     return
 
 
@@ -222,11 +221,12 @@ def trade_execution(cycle, trade):
             # Check if mean of delta is above threshold.
             if abs(mean_pred_delta) > pr.pred_delta_threshold:
                 print('Threshold met: YES')
-                execute(signal=results[0][0])
+                executed_time = execute(signal=results[0][0])
                 # Check if agreement is no action
                 if results[0][0] != -1:
                     trade += 1
-                    get_latest_trade_record(isPrint=True)
+                    trade_opened_time = get_latest_trade_record(isPrint=True)
+                    update_time_betw_execute_trade_open(execute_time=executed_time, trade_open_time=trade_opened_time)
                     if trade == pr.total_trade:
                         end(cycle,trade)
                         return -1, cycle, trade
