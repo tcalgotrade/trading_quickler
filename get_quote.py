@@ -1,12 +1,23 @@
 import pyautogui as pag
 import os.path
 import datetime
-import time
 from tkinter import Tk
 import pickle
 import params as pr
 import utility as ut
 import logging as lg
+
+
+def olymptrade_update_hour(interval_typew=pr.quote_interval_typew):
+    current_hour = datetime.datetime.now().strftime('%H')
+    hour_front = current_hour[0]
+    hour_back = current_hour[1]
+    # Click on Olymptrade Hour, last digit
+    pag.click(x=pr.olymp_hr[0], y=pr.olymp_hr[1])
+    pag.typewrite(['backspace', 'backspace'], interval=interval_typew)
+    pag.typewrite([hour_front])
+    pag.typewrite([hour_back], interval=interval_typew)
+    return
 
 
 def olymptrade_time_and_quote(hour_front, hour_back, min_front, min_back,
@@ -158,6 +169,7 @@ if __name__ == '__main__':
     if pr.test_get_some:
         get_some(hours_list=[12], minutes_list=[0])
     if pr.test_build_dataset_last_t:
-        build_dataset_last_t_minutes(t=5, isTrading=1)
+        build_dataset_last_t_minutes(t=2, isTrading=1)
+        print('Time now is:', datetime.datetime.now())
     if pr.test_build_dataset:
         build_dataset(hours=[10,12,14,16,18,20,22], mins=range(28,49))

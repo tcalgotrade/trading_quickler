@@ -17,7 +17,7 @@ import traceback
 import params as pr
 import utility as ut
 import logging as lg
-
+import execution as ex
 
 # Display dataframe & arrays in full glory
 np.set_printoptions(threshold=sys.maxsize)
@@ -215,7 +215,7 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
     except Exception:
         print('Something went wrong when computing : x ')
         print('Warm:', warmup, 'Train:', train,  'Delay', k,  'Test', test,  'Ridge', ridge_param)
-        print('x shape:',x.shape)
+        print('maxtime_pts:',maxtime_pts) ; print('k:',k)
         print('Dataframe shape', df.shape)
         print(traceback.format_exc())
         return -1, 0
@@ -252,10 +252,9 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
     except Exception:
         print('Something went wrong when computing : out_train ')
         print('Warm:', warmup, 'Train:', train,  'Delay', k,  'Test', test,  'Ridge', ridge_param)
-        print('x shape:',x.shape)
-        print('out_train:',out_train.shape)
-        print('Dataframe shape', df.shape)
-        print('dtot, traintime_pts, dlin, warmup_pts, warmtrain_pts, dt:', dtot, traintime_pts, dlin, warmup_pts, warmtrain_pts, dt)
+        print('dlin:',dlin) ; print('warmup_pts:',warmup_pts) ; print('warmtrain_pts:',warmtrain_pts)
+        print('dtot:',dtot) ; print('traintime_pts:',traintime_pts)
+        print('x shape:',x.shape) ; print('Dataframe shape', df.shape)
         print(traceback.format_exc())
         return -1, 0
 
@@ -272,7 +271,8 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
     except Exception:
         print('Something went wrong when computing : W_out ')
         print('Warm:', warmup, 'Train:', train,  'Delay', k,  'Test', test,  'Ridge', ridge_param)
-        print('Dataframe shape', df.shape)
+        print('x.shape:',x.shape) ; print('warmup_pts:',warmup_pts) ; print('warmtrain_pts:',warmtrain_pts)
+        print('out_train shape:',out_train.shape) ; print('Dataframe shape', df.shape)
         print(traceback.format_exc())
         return -1, 0
 
@@ -281,6 +281,8 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
         x_predict = x[0:d, warmup_pts - 1:warmtrain_pts - 1] + W_out @ out_train[:, 0:traintime_pts]
     except Exception:
         print('Something went wrong when computing : x_predict ')
+        print('x.shape:',x.shape) ; print('warmup_pts:',warmup_pts) ; print('warmtrain_pts:',warmtrain_pts)
+        print('out_train.shape:',out_train.shape) ; print('Dataframe shape', df.shape)
         print(traceback.format_exc())
         return -1, 0
 
@@ -312,7 +314,7 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
             x_test[0:d, j + 1] = x_test[0:d, j] + W_out @ out_test[:]
     except Exception:
         print('Something went wrong when computing : x_test')
-        print('x_test shape:',x_test.shape)
+        print('x_test shape:',x_test.shape) ; print('x.shape :',x.shape)
         print('warmtrain_pts:',warmtrain_pts)
         print(traceback.format_exc())
         return -1, 0
@@ -467,12 +469,14 @@ def cross_val_multiproc(params):
 
 def cross_val_trading(lookback_t):
 
+
     # Get date & time
     start_time = now = datetime.datetime.now()
     print('>>> Time @ Cross Val start : ', start_time.strftime("%H:%M:%S.%f"))
 
     # We have already warmed up prior to cycle start. So we now get one quote at current time.
     picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
+    start_time_cross_val = datetime.datetime.now()
 
     # Check if folder for today exists
     if not os.path.isdir(pr.data_store_location + now.strftime("%d%m%Y") + '/'):
@@ -484,7 +488,11 @@ def cross_val_trading(lookback_t):
 
     # Get all possible combinations of params
     lookback_t_range = [lookback_t]
-    bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, pr.test_range, pr.ridge_range, pr.threshold_test_nrmse, lookback_t_range))
+    if pr.cross_val_specify_test:
+        test_range = updated_test_time = pr.test_range
+    else:
+        test_range = updated_test_time = [pr.time_taken_by_trade_execution + pr.time_taken_by_cross_val + pr.asset_duration + pr.time_betw_cross_val_and_execution] # note hard coded time between end cross val and trade exec end.
+    bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, lookback_t_range))
     print('# of combinations:', len(bag_of_params))
 
     # Remove contents from last cross_val. We start anew each cross val during trading. No storing of files between cross vals
@@ -548,9 +556,13 @@ def cross_val_trading(lookback_t):
         print('Best params [train, delay, NRMSE, lookback_t, test]:', best_param)
 
     print('Cross Val took this amount of time:', datetime.datetime.now()-start_time)
-    print('>>> Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
+    print('>>> Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"), '\n')
 
-    return best_param, picklename, get_one_second
+    end_time_cross_val = datetime.datetime.now()
+    diff = end_time_cross_val-start_time_cross_val
+    pr.time_taken_by_cross_val = diff.total_seconds()
+    print('Updated time_taken_by_cross_val:', pr.time_taken_by_cross_val)
+    return best_param, picklename, get_one_second, updated_test_time[0]
 
 
 def cross_val_manual():
@@ -578,18 +590,22 @@ if __name__ == '__main__':
 
     # Force a manual cross val for trading
     if pr.test_cross_val_trading:
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=0)
+        ex.update_time_betw_execute_trade_open()
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=1)
         cross_val_trading(lookback_t=pr.lookback_t)
-
-
+        print(':', pr.time_taken_by_trade_execution, pr.time_taken_by_cross_val)
+        ex.update_time_betw_execute_trade_open()
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=1)
+        cross_val_trading(lookback_t=pr.lookback_t)
+        print(':', pr.time_taken_by_trade_execution, pr.time_taken_by_cross_val)
 
     # Quick test load.
     if pr.test_load_function:
-        df = load(picklename=pr.data_store_location + '08022022/0847', t=pr.lookback_t ,seconds=15, isDebug=True)
+        df = load(picklename=pr.data_store_location + '08022022/0847', lookback=pr.lookback_t ,seconds=15, isDebug=True)
 
     # Quick test compute
     if pr.test_compute_function:
-        df = load(picklename=pr.data_store_location + '08022022/1359', t=pr.lookback_t ,seconds=15, isDebug=True)
+        df = load(picklename=pr.data_store_location + '08022022/1359', lookback=pr.lookback_t ,seconds=15, isDebug=True)
         result = compute_ngrc(df, isDebug=0, isInfo=0, warmup=0, train=70, k=9, test=10, ridge_param=0, isTrg=1,
                               isTrading=0)
         print('Result:', result)

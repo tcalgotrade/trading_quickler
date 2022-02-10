@@ -43,9 +43,7 @@ def end(cycle, trade):
     return
 
 
-def checks(trade_params=None, df=None, start1_time_second= None, start2_time_second = None,
-           day_change_chk=False, trade_start_chk=False, cycle1_warmup_chk=False, params_chk=False, time_mismatch_chk=False, sec_mismatch_chk=False,
-           timed_start1_chk=False, timed_start2_chk=False):
+def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=False, cycle1_warmup_chk=False, params_chk=False, time_mismatch_chk=False):
     """ All checks leading up to trade execution checks."""
 
     if day_change_chk:
@@ -62,20 +60,19 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
         # Print key params for logging
         print('Started at:', datetime.datetime.now(), '\n')
         print('Cross Val Params:')
-        print('warm_range:', pr.warm_range,'\ntrain_range:', pr.train_range,'\ndelay_range:', pr.delay_range,'\ntest_range:', pr.test_range)
+        print('warm_range:', pr.warm_range,'\ntrain_range:', pr.train_range,'\ndelay_range:', pr.delay_range)
         print('ridge_range:',pr.ridge_range,'\nthreshold_test_nrmse:',pr.threshold_test_nrmse, '\n')
         print('Trading Params:')
-        print('total_trade:', pr.total_trade,'\nlookback_t:', pr.lookback_t,'\nadjusted_start1_time_second:', pr.adjusted_start1_time_second)
-        print('test_points:',pr.test_points,'\npred_delta_threshold:',pr.pred_delta_threshold)
-        print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds, '\ntarget_start1_time_second:',pr.target_start1_time_second)
-        if setup_check == 'CANCEL':
-            print('Cancelled by user.')
+        print('total_trade:', pr.total_trade,'\nlookback_t:', pr.lookback_t)
+        print('pred_delta_threshold:',pr.pred_delta_threshold)
+        print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds)
+        if setup_check == 'Cancel':
+            print('\nCancelled by user.')
             return 2
 
     if cycle1_warmup_chk:
         gq.build_dataset_last_t_minutes(t=pr.lookback_t+1, isTrading=1)
-        print('First cycle warmed up.')
-        print('/****************************************************************************/\n')
+        print('First cycle warmed up.\n')
         return 3
 
     if params_chk and trade_params is not None:
@@ -96,22 +93,10 @@ def checks(trade_params=None, df=None, start1_time_second= None, start2_time_sec
         if diff.total_seconds() < 0:
             print('Time mismatch - Diff of ', diff.total_seconds())
             return 5
-
-    if timed_start1_chk and start1_time_second is not None:
-        # Timing the start of the cross val. We want to make sure we cross val on latest data and predict as ASAP.
-        # About 3 secs for every get_quote action
-        if datetime.datetime.now().second < start1_time_second:
-            print('Waiting', start1_time_second - datetime.datetime.now().second, 'seconds for right start')
-            time.sleep(start1_time_second - datetime.datetime.now().second)
-        else:
-            print('Waiting', (60 - datetime.datetime.now().second) + start1_time_second, 'seconds for right start')
-            time.sleep((60 - datetime.datetime.now().second) + start1_time_second)
-        return
-
     return
 
 
-def get_latest_trade_record():
+def get_latest_trade_record(isPrint):
     """
     Sample record pulled from webiiste
     ['%', '5132.46', 'February', '08,', '13:05:03', '5133.17', 'February', '08,', '13:05:08', '1.00', '1.80', 'WIN']
@@ -119,54 +104,58 @@ def get_latest_trade_record():
     # Swwtich tab. Assume trade record page is on tab 2
     ut.tab_switch(tab=2)
     # Wait for trade to be registered
-    time.sleep(pr.asset_duration)
+    time.sleep(pr.asset_duration-1)
     # Refresh to make sure we have latest trade.
-    pag.hotkey('f5')
-    # Wait for page to load
-    time.sleep(7)
-    pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1])
-    pag.hotkey('ctrl', 'a')
-    pag.hotkey('ctrl', 'c')
+    pag.hotkey('f5', interval=pr.demotrade_interval_refresh)
+    pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1], interval=0.1)
+    pag.hotkey('ctrl', 'a', interval=0.1)
+    pag.hotkey('ctrl', 'c', interval=0.1)
     data = Tk().clipboard_get()
     start_index = data.rfind("Status")
     data = data[start_index+len("Status")+len("Quickler	80%"):start_index+len("Status")+len("Quickler	80%")+77]
     record = []
     for x in data.split():
         record.append(x)
-    print('\nLast trade result:')
-    print('OpenPrice:', record[1], 'ClosePrice:', record[5])
-    print('OpenTime:', record[4], 'CloseTime:',record[8])
-    if float(record[-1]) != 0:
-        record.append('WIN')
-        print('Outcome: WIN!!!!!!\n')
-    else:
-        record[-1] = 'LOSE'
-        print('Outcome: LOSE.\n')
+    if isPrint:
+        print('Last trade result:')
+        print('OpenPrice:', record[1], 'ClosePrice:', record[5])
+        print('OpenTime:', record[4], 'CloseTime:',record[8])
+        if float(record[-1]) != 0:
+            record.append('WIN')
+            print('Outcome: WIN!!!!!!\n')
+        else:
+            record[-1] = 'LOSE'
+            print('Outcome: LOSE.\n')
     ut.tab_switch(tab=1)
-    return record[8]
+    return record[4] # time of trade open on platform.
 
-def update_test_range_param(data_time=None, close_time=None):
-    # Convert incoming dataframe to string
-    data_time = data_time.astype(str)
-    # Get last row's time
-    data_last_time = data_time.iloc[-1]
-    # Change string to datetime object
-    data_last_time = datetime.datetime.strptime(data_last_time, '%H:%M:%S.%f')
-    close_time = datetime.datetime.strptime(close_time, '%H:%M:%S')
-    # Calc difference between
-    diff = close_time - data_last_time
-    # Only effect change
-    if diff.total_seconds() > pr.asset_duration and diff.total_seconds() < 14:
-        pr.test_range = [diff.total_seconds()]
-    print('Diff between data last time and trade close time:', diff.total_seconds())
-    print('Changed pr.test_range to::',pr.test_range)
+
+def demo_trade():
+    pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
+    pag.click(x=pr.olymp_demo_account[0], y=pr.olymp_demo_account[1], interval=0.5)
+    pag.click(x=pr.olymp_up[0], y=pr.olymp_up[1], interval=0.5)
+    now = datetime.datetime.now().strftime('%H:%M:%S.%f')
+    return datetime.datetime.strptime(now, '%H:%M:%S.%f')
+
+
+def update_time_betw_execute_trade_open():
+    execute_time = demo_trade()
+    print('>>> Time @ Demo trade execution:',execute_time)
+    trade_open_time = get_latest_trade_record(isPrint=False)
+    trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S')
+    # Calc difference between. We should expect trade_open_time to be later.
+    diff = trade_open_time - execute_time
+    pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
+    pag.click(x=pr.olymp_usd_account[0], y=pr.olymp_usd_account[1], interval=0.5)
+    pr.time_taken_by_trade_execution = diff.total_seconds()
+    print('Updated time_taken_by_trade_execution:\n', pr.time_taken_by_trade_execution)
     return
 
 
-def trade_execution(cycle, trade):
+def trade_execution(cycle, trade, time_taken_by_trade_execution):
 
     # We cross validate for best params.
-    best_param, picklename, get_one_second = an.cross_val_trading(lookback_t=pr.lookback_t)
+    best_param, picklename, get_one_second, updated_test_time = an.cross_val_trading(lookback_t=pr.lookback_t)
 
     # Check if params are still default, if so, skip one iteration.
     if checks(trade_params=best_param, params_chk=True) == 4:
@@ -174,7 +163,8 @@ def trade_execution(cycle, trade):
         return 1 , cycle, trade
 
     # Print params to be used.
-    print('Using this params for this cycle: [train, delay, NRMSE, lookback_t, test] ', best_param)
+    print('Using this params for this cycle: [train, delay, NRMSE, lookback_t, test] ')
+    print(best_param)
 
     # Load dataframe
     df = an.load(picklename=picklename, lookback=pr.lookback_t_min ,seconds=get_one_second)
@@ -193,10 +183,13 @@ def trade_execution(cycle, trade):
     # Compute what trade actions to take
     # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
     results = []
-    for test_point in pr.test_points:
+    if pr.cross_val_specify_test: test_points = pr.test_points
+    else: test_points = [updated_test_time-0.5,updated_test_time, updated_test_time+0.5]
+    for t in test_points:
         results.append(
-            an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=-1, train=best_param[0][0], k=best_param[0][1], test=test_point,
+            an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=-1, train=best_param[0][0], k=best_param[0][1], test=t,
                             ridge_param=pr.ridge_range[0], isTrg=0, isTrading=1))
+    print('Updated_test_time chosen for trade prediction:', updated_test_time)
     print('>>> Time @ compute complete : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
     # Consolidate results for trade execution.
@@ -213,7 +206,7 @@ def trade_execution(cycle, trade):
     stdev_pred_delta = np.std(test_predictions_quote_delta)
     print('All results pred delta:', test_predictions_quote_delta)
     print('Average of all results pred delta:', mean_pred_delta)
-    print('Std Dev of all results pred delta:', stdev_pred_delta)
+    print('Std Dev of all results pred delta:', stdev_pred_delta, '\n')
 
     # Trade Execution
     if time_mismatch != 1:
@@ -227,16 +220,17 @@ def trade_execution(cycle, trade):
                 # Check if agreement is no action
                 if results[0][0] != -1:
                     trade += 1
-                    close_time = get_latest_trade_record()
-                    update_test_range_param(data_time=df['time'], close_time=close_time)
+                    get_latest_trade_record(isPrint=True)
                     if trade == pr.total_trade:
                         end(cycle,trade)
                         return -1, cycle, trade
-            else:
-                print('No execution. Criteria not met.')
+
+    if time_mismatch == 1: print('No execution - Time Mismatch: YES')
+    if action_sum != 0 or action_sum != 1 or action_sum != -len(results): print('No execution - Direction agreement: NO')
+    if abs(mean_pred_delta) < pr.pred_delta_threshold: print('No execution - Threshold met: NO')
 
     cycle += 1
-    print('/****************************************************************************/\n')
+    print('\n/****************************************************************************/\n')
     return 0 , cycle, trade
 
 
@@ -246,9 +240,9 @@ if __name__ == '__main__':
     # tradelog_name = "trade_execution_"+str(tradelog_datetime)+".log"
     # logging.basicConfig(filename=tradelog_name, level=logging.DEBUG) # https://www.loggly.com/?p=76609
 
-    multiprocessing.freeze_support() ; cycle = 1 ; trade = 0
-
+    multiprocessing.freeze_support() ; cycle = 1 ; trade = 0 ; time_taken_by_trade_execution = pr.time_taken_by_trade_execution
     while True:
+        print('\n/****************************************************************************/\n')
         print('Cycle # : ', cycle) ; print('Trade executed: ', trade, '\n')
 
         # Some checks to make sure we're good before trading.
@@ -256,15 +250,21 @@ if __name__ == '__main__':
             # Sleep for few minutes for data to build up.
             # If we do not sleep, will have issues with hour_min_to_list_t
             time.sleep((pr.lookback_t+1)*60)
-            # Change date with PyAutoGUI
-            ut.date_changer()
+            if pr.olymp_day is not None:
+                # Change date with PyAutoGUI only if we have date
+                ut.date_changer()
+            else:
+                break
         if cycle == 1:
             if checks(cycle, trade_start_chk=True) == 2:
                 break
+            pr.time_taken_by_trade_execution = update_time_betw_execute_trade_open()
+            gq.olymptrade_update_hour()
             checks(cycle1_warmup_chk=True)
+            an.cross_val_trading(lookback_t=pr.lookback_t)
 
         # We time our getting of data, do cross val do prediction and execute trade if within NRMSE
-        flow_control = trade_execution(cycle=cycle, trade=trade)
+        flow_control = trade_execution(cycle=cycle, trade=trade, time_taken_by_trade_execution=time_taken_by_trade_execution)
 
         if flow_control[0] == -1:
             break
@@ -272,5 +272,7 @@ if __name__ == '__main__':
             cycle = flow_control[1]
             trade = flow_control[2]
 
+        # Get time between trade execution to trade close by doing a demo trade.
+        pr.time_taken_by_trade_execution = update_time_betw_execute_trade_open()
         # Buld data up again in case the previous gets is not clean or full
         gq.build_dataset_last_t_minutes(t=pr.lookback_t , isTrading=1)
