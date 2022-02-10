@@ -21,6 +21,7 @@ if current_system == 'rested':
         olymp_day = ()
     olymp_browser = (1722, 22)
     olymp_trade_record = (323,702)
+    olymp_first_trade_record = (414,703)
     click_start = (132, 1114)
 if current_system == 'z400':
     # Check browser at 100% zoom level
@@ -44,7 +45,7 @@ if current_system == 'z400':
 data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
 
 # Levers for testing
-find_pos = False
+find_pos = True
 test_get_one = False
 test_get_some = False
 test_build_dataset_last_t = False

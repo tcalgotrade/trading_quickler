@@ -472,13 +472,13 @@ def update_time_betw_execute_trade_open():
     execute_time = ex.demo_trade()
     print('>>> Time @ Demo trade execution:',execute_time)
     trade_open_time = ex.get_latest_trade_record(isPrint=False)
-    trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S')
+    trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S.%f')
     # Calc difference between. We should expect trade_open_time to be later.
     diff = trade_open_time - execute_time
     pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
     pag.click(x=pr.olymp_usd_account[0], y=pr.olymp_usd_account[1], interval=0.5)
     pr.change_time_onthefly(time_te=diff.total_seconds())
-    print('Updated time_taken_by_trade_execution:', pr.time_taken_by_trade_execution, '\n')
+    print('*** Updated time_taken_by_trade_execution:', pr.time_taken_by_trade_execution, '\n')
     return
 
 
@@ -576,7 +576,7 @@ def cross_val_trading(lookback_t):
     end_time_cross_val = datetime.datetime.now()
     diff = end_time_cross_val-start_time_cross_val
     pr.change_time_onthefly(time_cv=diff.total_seconds())
-    print('Updated time_taken_by_cross_val:', pr.time_taken_by_cross_val,'\n')
+    print('*** Updated time_taken_by_cross_val:', pr.time_taken_by_cross_val,'\n')
     return best_param, picklename, get_one_second, updated_test_time[0]
 
 
@@ -602,7 +602,7 @@ def cross_val_manual():
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
-
+    update_time_betw_execute_trade_open()
     # Force a manual cross val for trading
     if pr.test_cross_val_trading:
         ex.update_time_betw_execute_trade_open()

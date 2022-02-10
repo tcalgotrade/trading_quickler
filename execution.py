@@ -80,7 +80,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         default_param = []
         for i in range(0,pr.number_best_param): default_param.append([])
         if trade_params == default_param:
-            print('Params still default. Go on to next iteration.')
+            print('Params still default. Go on to next iteration.\n')
             return 4
 
     if time_mismatch_chk and df is not None:
@@ -98,7 +98,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
 def get_latest_trade_record(isPrint):
     """
     Sample record pulled from webiiste
-    ['%', '5132.46', 'February', '08,', '13:05:03', '5133.17', 'February', '08,', '13:05:08', '1.00', '1.80', 'WIN']
+    ['10', 'February', '12:06:45.025', '10', 'February', '12:06:50.025', 'Quote', '5011.31', '5010.84', 'Closed', 'with', 'a', 'profit']
     """
     # Swwtich tab. Assume trade record page is on tab 2
     ut.tab_switch(tab=2)
@@ -106,28 +106,27 @@ def get_latest_trade_record(isPrint):
     time.sleep(pr.asset_duration-1)
     # Refresh to make sure we have latest trade.
     pag.hotkey('f5', interval=pr.demotrade_interval_refresh)
-    pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1], interval=0.1)
+    pag.click(x=pr.olymp_first_trade_record[0], y=pr.olymp_first_trade_record[1], interval=0.2)
     pag.hotkey('ctrl', 'a', interval=0.1)
     pag.hotkey('ctrl', 'c', interval=0.1)
     data = Tk().clipboard_get()
-    start_index = data.rfind("Status")
-    data = data[start_index+len("Status")+len("Quickler	80%"):start_index+len("Status")+len("Quickler	80%")+77]
+    start_index = data.rfind("Date and time")
+    data = data[start_index+len("Date and time"):start_index+len("Date and time")+119]
     record = []
     for x in data.split():
         record.append(x)
     if isPrint:
         print('Last trade result:')
-        print('OpenPrice:', record[1], 'ClosePrice:', record[5])
-        print('OpenTime:', record[4], 'CloseTime:',record[8])
-        if float(record[-1]) != 0:
-            record.append('WIN')
-            print('Outcome: WIN!!!!!!\n')
-        else:
-            record[-1] = 'LOSE'
-            print('Outcome: LOSE.\n')
+        print('OpenPrice:', record[7], 'ClosePrice:', record[8])
+        print('OpenTime:', record[2], 'CloseTime:',record[5])
+        if record[-1] == 'prof':
+            print('Outcome: WIN!!!\n')
+        if record[-1] == 'loss':
+            print('Outcome: LOSS...\n')
+        if record[-1] == 'refu':
+            print('Outcome: Refund.\n')
     ut.tab_switch(tab=1)
-    return record[4] # time of trade open on platform.
-
+    return record[2] # time of trade open on platform.
 
 def demo_trade():
     pag.click(x=pr.olymp_account_switch[0], y=pr.olymp_account_switch[1], interval=0.5)
@@ -174,8 +173,8 @@ def trade_execution(cycle, trade):
         results.append(
             an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=-1, train=best_param[0][0], k=best_param[0][1], test=t,
                             ridge_param=pr.ridge_range[0], isTrg=0, isTrading=1))
-    print('Updated_test_time chosen for trade prediction:', updated_test_time)
     print('>>> Time @ compute complete : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
+    print('*** Updated_test_time chosen for trade prediction:', updated_test_time)
 
     # Consolidate results for trade execution.
     test_predictions_quote_delta = []
