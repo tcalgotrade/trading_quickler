@@ -15,8 +15,6 @@ import tqdm
 import traceback
 import params as pr
 import utility as ut
-import cupy as cp
-import cupyx as cpx
 import logging as lg
 
 # Display dataframe & arrays in full glory
