@@ -99,40 +99,78 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
     return
 
 @te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.2) , stop=te.stop_after_attempt(3))
-def get_latest_trade_record(isPrint):
-    """
-    Sample record pulled from webiiste
-    ['4928.86', 'February', '11,', '23:27:21', '4928.75', 'February', '11,', '23:27:26', '1.00', '0.00', 'Quickler', '80%', '4920.87', 'February', '11,', '23:18:23', '4920.33', 'February', '11,', '23:18:28', '1.00', '1.80', 'Quickler', '80%', '4925.80', 'February', '11,', '23:13:01', '4926.14', 'February', '11,', '23:13:06', '1.00', '1.80', 'Quickler', '80%', '4869.05', 'February', '11,', '17:50:38', '4868.63', 'February', '11,', '17:50:43', '1.00', '1.80', 'Quickler', '80%', '4866.80', 'February', '11,', '17:33:32', '4866.59', 'February', '11,', '17:33:37', '1.00', '0.00', 'Quickler', '80%', '4864.64', 'February', '11,', '17:22:08', '4866.26', 'February', '11,', '17:22:13', '1.00', '0.00', 'Quickler', '80%', '4858.03', 'February', '11,', '17:19:01', '4859.62', 'February', '11,', '17:19:06', '1.00', '1.80', 'Quickler', '80%', '4864.51', 'February', '11,', '17:11:27', '4864.04', 'February', '11,', '17:11:32', '1.00', '1.80', 'Quickler', '80%', '4865.21', 'February', '11,', '17:10:58'...
-    """
+def get_latest_trade_record(isPrint, approach):
+
     # Swwtich tab. Assume trade record page is on tab 2
     ut.tab_switch(tab=2)
+
     # Wait for trade to be registered
     time.sleep(pr.asset_duration-1)
+
     # Refresh to make sure we have latest trade.
     pag.hotkey('f5', interval=pr.traderecord_interval_refresh)
-    pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1], interval=0.2)
+
+    # Click different depending on method.
+    if approach == 1:
+        pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1], interval=0.2)
+    if approach == 2:
+        pag.click(x=pr.olymp_first_trade_record[0], y=pr.olymp_first_trade_record[1], interval=0.2)
+
     pag.hotkey('ctrl', 'a', interval=0.1)
     pag.hotkey('ctrl', 'c', interval=0.1)
     data = Tk().clipboard_get()
-    start_index = data.find("Quickler	80%")
-    data = data[start_index+len("Quickler	80%"):]
-    end_index = data.find("Quickler	80%")
-    data = data[:end_index]
-    record = []
-    for x in data.split():
-        record.append(x)
-    if isPrint:
-        print('Last trade result:')
-        print('OpenPrice:', record[0], 'ClosePrice:', record[4])
-        print('OpenTime:', record[3], 'CloseTime:',record[7])
-        if record[-1] != '0.00':
-            print('Outcome: WIN!!!\n')
-        elif record[-1] == '0.00':
-            print('Outcome: LOSS...\n')
-        else:
-            print('Outcome: Refund.\n')
-    ut.tab_switch(tab=1)
-    return record[3]
+
+    # When pop up DOES NOT show. Less precise trade open.
+    if approach == 1:
+        """
+        Sample record pulled from webiiste
+        ['4928.86', 'February', '11,', '23:27:21', '4928.75', 'February', '11,', '23:27:26', '1.00', '0.00']
+        """
+        start_index = data.find("Quickler	80%")
+        data = data[start_index+len("Quickler	80%"):]
+        end_index = data.find("Quickler	80%")
+        data = data[:end_index]
+        record = []
+        for x in data.split():
+            record.append(x)
+        if isPrint:
+            print('Last trade result:')
+            print('OpenPrice:', record[0], 'ClosePrice:', record[4])
+            print('OpenTime:', record[3], 'CloseTime:',record[7])
+            if record[-1] != '0.00':
+                print('Outcome: WIN!!!\n')
+            elif record[-1] == '0.00':
+                print('Outcome: LOSS...\n')
+            else:
+                print('Outcome: Refund.\n')
+            ut.tab_switch(tab=1)
+            return record[3]
+
+    # When pop up DOES show. Precise
+    if approach == 2:
+        """
+        Sample record pulled from webiiste
+        ['10', 'February', '12:06:45.025', '10', 'February', '12:06:50.025', 'Quote', '5011.31', '5010.84', 'Closed', 'with', 'a', 'profit']
+        """
+        start_index = data.find("Date and time")
+        data = data[start_index+len("Date and time"):]
+        end_index = data.rfind("Deal verify")
+        data = data[:end_index]
+        record = []
+        for x in data.split():
+            record.append(x)
+        if isPrint:
+            print('Last trade result:')
+            print('OpenPrice:', record[7], 'ClosePrice:', record[8])
+            print('OpenTime:', record[2], 'CloseTime:', record[5])
+            if record[-1] == 'profit':
+                print('Outcome: WIN!!!\n')
+            if record[-1] == 'loss':
+                print('Outcome: LOSS...\n')
+            if record[-1] == 'refund':
+                print('Outcome: Refund.\n')
+        ut.tab_switch(tab=1)
+        return record[2]
 
 
 def demo_trade():
@@ -154,11 +192,24 @@ def trade_small():
 
 def update_time_betw_execution_end_and_trade_open(execute_time, trade_open_time):
     print('>>> Time @ trade execution:',execute_time)
-    trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S')
+    if len(trade_open_time) == 8:
+        trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S')
+    elif len(trade_open_time) == 12:
+        trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S.%f')
+    else:
+        raise Exception
     # Calc difference between. We should expect trade_open_time to be later.
     diff = trade_open_time - execute_time
-    pr.change_time_onthefly(time_et=diff.total_seconds()+0.5)
-    print('*** Updated time_betw_execution_end_and_trade_open to:', diff.total_seconds()+0.5, '\n')
+
+    if len(trade_open_time) == 8:
+        # If we are missing decimals, we add a bit of margin.
+        pr.change_time_onthefly(time_et=diff.total_seconds()+0.5)
+        print('*** Updated time_betw_execution_end_and_trade_open to:', diff.total_seconds() + 0.5, '\n')
+    elif len(trade_open_time) == 12:
+        pr.change_time_onthefly(time_et=diff.total_seconds())
+        print('*** Updated time_betw_execution_end_and_trade_open to:', diff.total_seconds(), '\n')
+    else:
+        raise Exception
     return
 
 
@@ -173,91 +224,107 @@ def update_time_betw_get_end_and_execution_end(execute_time, start_get_end):
 
 
 def trade_execution(cycle, trade):
+    try:
+        # We cross validate for best params.
+        best_param, test_range_center = an.cross_val_trading(lookback_t=pr.lookback_t)
 
-    # We cross validate for best params.
-    best_param, test_range_center = an.cross_val_trading(lookback_t=pr.lookback_t)
+        # Check if any params are still default, if so, skip one iteration.
+        if checks(trade_params=best_param, params_chk=True) == 4:
+            cycle += 1
+            return 1 , cycle, trade
 
-    # Check if any params are still default, if so, skip one iteration.
-    if checks(trade_params=best_param, params_chk=True) == 4:
-        cycle += 1
-        return 1 , cycle, trade
+        # Print params to be used.
+        print('Using these params for this cycle:')
+        print('[[train, delay, NRMSE, lookback_t, test, ridge]]:')
+        for bp in best_param:
+            print(bp)
 
-    # Print params to be used.
-    print('Using these params for this cycle:')
-    print('[[train, delay, NRMSE, lookback_t, test, ridge]]:')
-    for bp in best_param:
-        print(bp)
+        # Build + get new data since cross val may have taken some time.
+        # Build data up + get one for the duration that build last took
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
+        picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
 
-    # Build + get new data since cross val may have taken some time.
-    # Build data up + get one for the duration that build last took
-    gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
-    picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
+        start_get_end = datetime.datetime.now().strftime('%H:%M:%S.%f')
 
-    start_get_end = datetime.datetime.now().strftime('%H:%M:%S.%f')
+        # Load dataframe
+        df = an.load(picklename=picklename, lookback=pr.lookback_t_min ,seconds=get_one_second)
+        print('Loaded pickle used for prediction for trading ... :', picklename)
+        print('Dataframe Statistics:')
+        print('>>> Time @ first row:', df['time'].iloc[0])
+        print('>>> Time @ last row:', df['time'].iloc[-1])
+        print('Mean of quote history:', np.mean(df['quote']))
+        print('Std Dev of quote history:', np.std(df['quote']))
 
-    # Load dataframe
-    df = an.load(picklename=picklename, lookback=pr.lookback_t_min ,seconds=get_one_second)
-    print('Loaded pickle used for prediction for trading ... :', picklename)
-    print('Dataframe Statistics:')
-    print('>>> Time @ first row:', df['time'].iloc[0])
-    print('>>> Time @ last row:', df['time'].iloc[-1])
-    print('Mean of quote history:', np.mean(df['quote']))
-    print('Std Dev of quote history:', np.std(df['quote']))
+        # Check current min/sec vs min/sec of last row of dataframe.
+        time_mismatch = 0
+        if checks(df=df, time_mismatch_chk=True) == 5:
+            time_mismatch = 1
 
-    # Check current min/sec vs min/sec of last row of dataframe.
-    time_mismatch = 0
-    if checks(df=df, time_mismatch_chk=True) == 5:
-        time_mismatch = 1
+        # Compute what trade actions to take
+        # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
+        results = []
+        for p in best_param:
+            results.append(an.compute_ngrc(df, warmup=-1, train=p[0], k=p[1], test=p[4],
+                                ridge_param=p[5], isTrg=0, isTrading=1))
+        print('*** test_range_center used for trade prediction:', test_range_center)
 
-    # Compute what trade actions to take
-    # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
-    results = []
-    for p in best_param:
-        results.append(an.compute_ngrc(df, warmup=-1, train=p[0], k=p[1], test=p[4],
-                            ridge_param=p[5], isTrg=0, isTrading=1))
-    print('*** test_range_center used for trade prediction:', test_range_center)
+        # Consolidate results for trade execution.
+        test_predictions_quote_delta = []
+        for result in results:
+            test_predictions_quote_delta.append(round(result[2],3))
 
-    # Consolidate results for trade execution.
-    test_predictions_quote_delta = []
-    for result in results:
-        test_predictions_quote_delta.append(round(result[2],3))
+        action_sum = 0
+        for result in results:
+            action_sum += result[0]
 
-    action_sum = 0
-    for result in results:
-        action_sum += result[0]
+        # Calc basic stats of delta of price prediction.
+        mean_pred_delta = np.mean(test_predictions_quote_delta)
+        stdev_pred_delta = np.std(test_predictions_quote_delta)
+        print('All results pred delta:', test_predictions_quote_delta)
+        print('Average of all results pred delta:', mean_pred_delta)
+        print('Std Dev of all results pred delta:', stdev_pred_delta, '\n')
 
-    # Calc basic stats of delta of price prediction.
-    mean_pred_delta = np.mean(test_predictions_quote_delta)
-    stdev_pred_delta = np.std(test_predictions_quote_delta)
-    print('All results pred delta:', test_predictions_quote_delta)
-    print('Average of all results pred delta:', mean_pred_delta)
-    print('Std Dev of all results pred delta:', stdev_pred_delta, '\n')
+        # Trade Execution
+        if time_mismatch != 1:
+            print('Time Mismatch: NO')
 
-    # Trade Execution
-    if time_mismatch != 1:
-        print('Time Mismatch: NO')
-        if action_sum == 0 or action_sum == len(results):
-            print('Direction agreement: YES ')
-            # Check if mean of delta is above threshold.
-            if abs(mean_pred_delta) > pr.pred_delta_threshold:
-                print('Threshold met: YES')
-                executed_time = execute(signal=results[0][0])
-                # Check if agreement is no action
-                if results[0][0] != -1:
-                    trade += 1
-                    trade_opened_time = get_latest_trade_record(isPrint=True)
+            if action_sum == 0 or action_sum == len(results):
+                print('Direction agreement: YES ')
+
+                # Check if mean of delta is above threshold.
+                if abs(mean_pred_delta) > pr.pred_delta_threshold:
+                    print('Threshold met: YES')
+
+                    # Hit it!
+                    executed_time = execute(signal=results[0][0]) ; trade += 1
+
+                    # Get trade record + update timings. 2 methods to get record.
+                    trade_opened_time = get_latest_trade_record(isPrint=True, approach=2)
                     update_time_betw_get_end_and_execution_end(executed_time, start_get_end)
-                    update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
-                    if trade == pr.total_trade:
-                        end(cycle,trade)
-                        return -1, cycle, trade
+                    try:
+                        update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
+                    except:
+                        trade_opened_time = get_latest_trade_record(isPrint=True, approach=1)
+                        update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
 
-    if time_mismatch == 1: print('No execution - Time Mismatch: YES')
-    if 0 < action_sum < len(results) or action_sum < 0: print('No execution - Direction agreement: NO')
-    if abs(mean_pred_delta) < pr.pred_delta_threshold: print('No execution - Threshold met: NO')
+        # Output why we did not take action.
+        if time_mismatch == 1: print('No execution - Time Mismatch: YES')
+        if 0 < action_sum < len(results) or action_sum < 0: print('No execution - Direction agreement: NO')
+        if abs(mean_pred_delta) < pr.pred_delta_threshold: print('No execution - Threshold met: NO')
 
-    cycle += 1
-    return 0 , cycle, trade
+        # Check if we have traded enough.
+        if trade == pr.total_trade:
+            end(cycle,trade)
+            return -1, cycle, trade
+
+        # Go onto next cycle.
+        cycle += 1
+        return 0 , cycle, trade
+
+    except:
+        # Gracefully gi to next cycle if anything above raises exception.
+        cycle += 1
+        return 0, cycle, trade
 
 
 if __name__ == '__main__':

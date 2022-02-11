@@ -409,7 +409,7 @@ def compute_ngrc(df,warmup, train, k, test, ridge_param, isDebug=0, isInfo=0, is
             if test_predictions_quote_delta > 0:
                 return 1, trg_nrmse, test_predictions_quote_delta
             else:
-                return 1, trg_nrmse, test_predictions_quote_delta
+                return -1, trg_nrmse, test_predictions_quote_delta
 
     except Exception:
         print(traceback.format_exc())
