@@ -1,6 +1,6 @@
 import numpy as np
 
-current_system = 'rested'
+current_system = 'z400'
 asset_name = "Quickler"
 asset_duration = 5 # in seconds
 
