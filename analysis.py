@@ -587,7 +587,7 @@ if __name__ == '__main__':
 
     # Quick test load.
     if pr.test_load_function:
-        df = load(picklename=pr.data_store_location + '08022022/0847', lookback=pr.lookback_t ,seconds=15, isDebug=True)
+        df = load(picklename=pr.data_store_location + '11022022/1058', lookback=pr.lookback_t ,seconds=15, isDebug=True)
 
     # Quick test compute
     if pr.test_compute_function:

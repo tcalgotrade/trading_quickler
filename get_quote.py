@@ -5,9 +5,8 @@ from tkinter import Tk
 import pickle
 import params as pr
 import utility as ut
-import win32clipboard
+import tenacity as te
 import logging as lg
-
 
 
 def olymptrade_update_hour(interval_typew=pr.interval_typew):
@@ -50,7 +49,7 @@ def clean_get(data):
     data = data[start_index+len("Quote"):-end_index]
     return data
 
-
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.2) , stop=te.stop_after_attempt(3))
 def get_one_now():
 
     # Get date time
@@ -58,8 +57,8 @@ def get_one_now():
     date = now.strftime("%d%m%Y")
     hour_front = now.strftime("%H")[0]
     hour_back = now.strftime("%H")[1]
-    min_front = now.strftime("%M")[0]
-    min_back = now.strftime("%M")[1]
+    minute_front = now.strftime("%M")[0]
+    minute_back = now.strftime("%M")[1]
 
     if pr.test_cross_val_trading and pr.cross_val_past:
         hour_front = pr.test_hour[0]; hour_back = pr.test_hour[1]
@@ -69,22 +68,28 @@ def get_one_now():
     if not os.path.isdir(pr.data_store_location + date + '/'):
         os.mkdir(pr.data_store_location + date + '/')
 
-    olymptrade_time_and_quote(hour_front=hour_front, hour_back=hour_back, min_front=min_front, min_back=min_back)
+    olymptrade_time_and_quote(hour_front=hour_front, hour_back=hour_back, min_front=minute_front, min_back=minute_back)
 
     # Save clipboard to pickle file
-    win32clipboard.OpenClipboard()
-    data = win32clipboard.GetClipboardData() #Tk().clipboard_get()
-    win32clipboard.CloseClipboard()
+    data = Tk().clipboard_get()
+
+    # We filter out unwanted bits
     data = clean_get(data)
-    with open(pr.data_store_location+date+'/'+hour_front+hour_back+min_front+min_back, 'wb') as f:
+
+    # Check that timing from what we got is what we want.
+    if data[4:6] != minute_front + minute_back:
+        raise Exception
+
+    # Save it.
+    with open(pr.data_store_location + date + '/' + hour_front + hour_back + minute_front + minute_back, 'wb') as f:
         pickle.dump(data, f)
 
-    picklename = pr.data_store_location+date+'/'+hour_front+hour_back+min_front+min_back
+    picklename = pr.data_store_location+date+'/'+hour_front+hour_back+minute_front+minute_back
     if pr.test_cross_val_trading and pr.cross_val_past:
         return picklename, int(pr.test_hour), int(pr.test_second), int(pr.test_second)
     return picklename, now.hour, now.minute, now.second
 
-
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.2) , stop=te.stop_after_attempt(3))
 def get_some(hours_list, minutes_list):
 
     # Get date
@@ -97,34 +102,50 @@ def get_some(hours_list, minutes_list):
     # Get quote, from past to now.
     hour_front = ut.process_current_datetime(hour=hours_list[0])[0]
     hour_back = ut.process_current_datetime(hour=hours_list[0])[1]
+
     for minute in minutes_list[0]:
         minute_front = ut.process_current_datetime(min=minute)[2]
         minute_back = ut.process_current_datetime(min=minute)[3]
         olymptrade_time_and_quote(hour_front=hour_front, hour_back=hour_back, min_front=minute_front,
                                   min_back=minute_back)
         # Save clipboard to pickle file
-        win32clipboard.OpenClipboard()
-        data = win32clipboard.GetClipboardData() #Tk().clipboard_get()
-        win32clipboard.CloseClipboard()
+        data = Tk().clipboard_get()
+
+        # We filter out unwanted bits
         data = clean_get(data)
+
+        # Check that timing from what we got is what we want.
+        if data[4:6] != minute_front+minute_back:
+            raise Exception
+
+        # Save it.
         with open(pr.data_store_location+date+'/'+hour_front+hour_back+minute_front+minute_back, 'wb') as f:
             pickle.dump(data, f)
 
     if len(hours_list) == 2:
+
         # Front
         hour_front = ut.process_current_datetime(hour=hours_list[1])[0]
         hour_back = ut.process_current_datetime(hour=hours_list[1])[1]
+
         for minute in minutes_list[1]:
             minute_front = ut.process_current_datetime(min=minute)[2]
             minute_back = ut.process_current_datetime(min=minute)[3]
             olymptrade_time_and_quote(hour_front=hour_front, hour_back=hour_back, min_front=minute_front,
                                       min_back=minute_back)
             # Save clipboard to pickle file
-            win32clipboard.OpenClipboard()
-            data = win32clipboard.GetClipboardData() # Tk().clipboard_get()
-            win32clipboard.CloseClipboard()
+            data = Tk().clipboard_get()
+
+            # We filter out unwanted bits
             data = clean_get(data)
-            with open(pr.data_store_location+date+'/'+hour_front+hour_back+minute_front+minute_back, 'wb') as f:
+
+            # Check that timing from what we got is what we want.
+            if data[4:6] != minute_front + minute_back:
+                raise Exception
+
+            # Save it.
+            with open(pr.data_store_location + date + '/' + hour_front + hour_back + minute_front + minute_back,
+                      'wb') as f:
                 pickle.dump(data, f)
 
     return
@@ -160,7 +181,6 @@ def build_dataset_last_t_minutes(t=1, isTrading=0):
 
     print('Built dataset for lookback_t:', t , 'minutes behind this time :', now.hour , now.minute)
     print('Took this amount of time:', datetime.datetime.now() - start_time, 'to get', t, 'minutes of data')
-    return
 
 
 if __name__ == '__main__':
@@ -169,7 +189,7 @@ if __name__ == '__main__':
     if pr.test_get_some:
         get_some(hours_list=[12], minutes_list=[0])
     if pr.test_build_dataset_last_t:
-        build_dataset_last_t_minutes(t=10, isTrading=1)
+        build_dataset_last_t_minutes(t=3, isTrading=1)
         print('Time now is:', datetime.datetime.now())
     if pr.test_build_dataset:
         build_dataset(hours=[10,12,14,16,18,20,22], mins=range(28,49))

@@ -9,7 +9,7 @@ import multiprocessing
 import pickle
 import params as pr
 import utility as ut
-import win32clipboard
+import tenacity as te
 import logging
 
 pag.FAILSAFE = True
@@ -98,7 +98,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
             return 5
     return
 
-
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.2) , stop=te.stop_after_attempt(3))
 def get_latest_trade_record(isPrint):
     """
     Sample record pulled from webiiste
@@ -113,11 +113,10 @@ def get_latest_trade_record(isPrint):
     pag.click(x=pr.olymp_first_trade_record[0], y=pr.olymp_first_trade_record[1], interval=0.2)
     pag.hotkey('ctrl', 'a', interval=0.1)
     pag.hotkey('ctrl', 'c', interval=0.1)
-    win32clipboard.OpenClipboard()
-    data = win32clipboard.GetClipboardData() #Tk().clipboard_get()
-    win32clipboard.CloseClipboard()
+    data = Tk().clipboard_get()
     start_index = data.rfind("Date and time")
-    data = data[start_index+len("Date and time"):start_index+len("Date and time")+119]
+    end_index = data.rfind("Deal verify")
+    data = data[start_index+len("Date and time"):end_index]
     record = []
     for x in data.split():
         record.append(x)
@@ -125,11 +124,11 @@ def get_latest_trade_record(isPrint):
         print('Last trade result:')
         print('OpenPrice:', record[7], 'ClosePrice:', record[8])
         print('OpenTime:', record[2], 'CloseTime:',record[5])
-        if record[-1] == 'prof':
+        if record[-1] == 'profit':
             print('Outcome: WIN!!!\n')
         if record[-1] == 'loss':
             print('Outcome: LOSS...\n')
-        if record[-1] == 'refu':
+        if record[-1] == 'refund':
             print('Outcome: Refund.\n')
     ut.tab_switch(tab=1)
     return record[2] # time of trade open on platform.
@@ -247,7 +246,7 @@ def trade_execution(cycle, trade):
 
     if time_mismatch == 1:
         print('No execution - Time Mismatch: YES')
-    if action_sum != 0 or action_sum != len(results):
+    if 0 < action_sum < len(results) or action_sum < 0:
         print('No execution - Direction agreement: NO')
     if abs(mean_quotediffsum) < pr.quotediff_threshold or mean_quotediff2sum < pr.quotediff2_threshold:
         print('No execution - Threshold met: NO')
@@ -277,6 +276,7 @@ if __name__ == '__main__':
                 ut.date_changer()
             else:
                 break
+            gq.build_dataset_last_t_minutes(t=pr.lookback_t, isTrading=1)
         if cycle == 1:
             if checks(cycle, trade_start_chk=True) == 2:
                 break
