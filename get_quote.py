@@ -89,7 +89,7 @@ def get_one_now():
         return picklename, int(pr.test_hour), int(pr.test_second), int(pr.test_second)
     return picklename, now.hour, now.minute, now.second
 
-@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.2) , stop=te.stop_after_attempt(3))
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.2) , stop=te.stop_after_attempt(10))
 def get_some(hours_list, minutes_list):
 
     # Get date

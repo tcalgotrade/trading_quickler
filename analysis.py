@@ -15,6 +15,8 @@ import tqdm
 import traceback
 import params as pr
 import utility as ut
+import cupy as cp
+import cupyx as cpx
 import logging as lg
 
 # Display dataframe & arrays in full glory
@@ -493,7 +495,7 @@ def cross_val_trading(lookback_t):
     cross_val_multiproc(params=bag_of_params)
 
     # Find best params. We save the one with lowest test NRMSE
-    # [[train, delay, NRMSE, lookback_t, test]]
+    # [[train, delay, NRMSE, lookback_t, test, ridge]]
     best_param = []
     for i in range(0,pr.number_best_param): best_param.append([])
     first_best_nrmse = 1.; second_best_nrmse = 1.; third_best_nrmse = 1.; fourth_best_nrmse = 1. ; fifth_best_nrmse = 1.
@@ -542,7 +544,7 @@ def cross_val_trading(lookback_t):
             best_param.pop(9) ; best_param.insert(9, [current_param[3], current_param[4], tenth_best_nrmse, current_param[10], current_param[5], current_param[6]])
 
     if pr.test_cross_val_trading:
-        print('Best params [train, delay, NRMSE, lookback_t, test]:', best_param)
+        print('Best params [[train, delay, NRMSE, lookback_t, test, ridge]]:', best_param)
 
     print('Cross Val took this amount of time:', datetime.datetime.now()-start_time)
     print('>>> Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
@@ -558,8 +560,7 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()
     # Force a manual cross val for trading
     if pr.test_cross_val_trading:
-        if pr.cross_val_build_data or not pr.cross_val_past:
-            gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=0)
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t)
         cross_val_trading(lookback_t=pr.lookback_t)
 
     # Quick test load.
@@ -568,7 +569,7 @@ if __name__ == '__main__':
 
     # Quick test compute
     if pr.test_compute_function:
-        df = load(picklename=pr.data_store_location + '08022022/1359', lookback=pr.lookback_t ,seconds=15, isDebug=True)
+        df = load(picklename=pr.data_store_location + '11022022/1215', lookback=pr.lookback_t ,seconds=15, isDebug=True)
         result = compute_ngrc(df, isDebug=0, isInfo=1, warmup=-1, train=10, k=2, test=10, ridge_param=8, isTrg=1,
                               isTrading=0)
         print('Result:', result)
