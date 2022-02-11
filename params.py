@@ -1,4 +1,6 @@
-current_system = 'z400'
+import numpy as np
+
+current_system = 'rested'
 asset_name = "Quickler"
 asset_duration = 5 # in seconds
 
@@ -59,39 +61,49 @@ test_build_dataset = False
 test_load_function = False
 test_compute_function = False
 
-# Backtesting with cross_val_trading. Will overwrite files in today's data/training/*today* folder
-test_cross_val_trading = False
+# Testing with cross_val_trading.
+# Will overwrite files in data/training/*today*
+test_cross_val_trading = True
 cross_val_past = False
-cross_val_specify_test = False
+cross_val_specify_test = True
 if cross_val_past:
     test_hour = '16' ; test_minute = '04' ; test_second = '15'
 if cross_val_specify_test:
-    test_range = [10]  # In seconds.
+    test_range = [7,8.5,10]  # In seconds.
     test_points = [test_range[0] - 0.5, test_range[0], test_range[0] + 0.5]
+if test_cross_val_trading:
+    lookback_t_min = 2 # Only read by compute() when predicting for trade.
+    lookback_t = 10 # Larger values of lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
+    number_best_param = 10 # Minimally 1
+    warm_range = np.arange(30,lookback_t-1,30) ; warm_range = np.append(warm_range,-1)  # In seconds. -1 to train and test on as close to current as possible. Must be > 0
+    train_range = range(2,11) # In seconds
+    delay_range = range(10,30) # In seconds
+    ridge_range = range(0,3)
+    threshold_test_nrmse = [1] # Set to 1 to allow all to show up
 
-# Cross Val Params
-warm_range = [-1] # In seconds. -1 to train and test on as close to current as possible. Must be > 0
-train_range = range(5,15) # In seconds
-delay_range = range(2,15) # In seconds
-ridge_range = [0]
-threshold_test_nrmse = [0.2] # Set to 1 to allow all to show up
-lookback_t_min = 2 # Only read by compute() when predicting for trade.
-lookback_t = 2 # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
-number_best_param = 5 # Minimally 1
+if not test_cross_val_trading:
+    warm_range = [-1] # In seconds. -1 to train and test on as close to current as possible. Must be > 0
+    train_range = range(2,30) # In seconds
+    delay_range = range(2,30) # In seconds
+    ridge_range = [0]
+    threshold_test_nrmse = [0.2] # Set to 1 to allow all to show up
+    lookback_t_min = 2 # Only read by compute() when predicting for trade.
+    lookback_t = 15 # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
+    number_best_param = 5 # Minimally 1
 
 # Params for how far ahead to predict
-time_taken_by_cross_val = -1 # GLOBAL: updated every cycle.
-time_taken_by_trade_execution = 1.5 # GLOBAL: updated after every trade.
-time_betw_cross_val_and_execution = 0.3 # Hardcode
+time_taken_by_cross_val = -1 # Updated at cycle1 & every cycle.
+time_taken_by_trade_execution = 1.5 # Updated after every trade.
+time_betw_cross_val_and_execution = 0.3 # Hardcoded.
 def change_time_onthefly(time_cv=None, time_te=None): # https://is.gd/HqFpNJ
     global time_taken_by_cross_val
     global time_taken_by_trade_execution
     if time_cv is not None: time_taken_by_cross_val = time_cv
     if time_te is not None: time_taken_by_trade_execution = time_te
 
-# Trading Params
-total_trade = 3
-pred_delta_threshold = 0.1
+# Trade Execution Params
+total_trade = 20
+pred_delta_threshold = 0.5
 time_to_get_quote_seconds = 2.1
 interval_typew = 0.1
 quote_interval_pricewait = 0.4

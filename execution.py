@@ -72,7 +72,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
             return 2
 
     if cycle1_warmup_chk:
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t+1, isTrading=1)
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t + 1)
         print('First cycle warmed up.\n')
         return 3
 
@@ -168,7 +168,7 @@ def trade_execution(cycle, trade):
         return 1 , cycle, trade
 
     # Print params to be used.
-    print('Using this params for this cycle: [train, delay, NRMSE, lookback_t, test] ')
+    print('Using this params for this cycle: [train, delay, NRMSE, lookback_t, test, ridge] ')
     print(best_param)
 
     # Load dataframe
@@ -232,7 +232,7 @@ def trade_execution(cycle, trade):
                         return -1, cycle, trade
 
     if time_mismatch == 1: print('No execution - Time Mismatch: YES')
-    if action_sum != 0 and action_sum != len(results): print('No execution - Direction agreement: NO')
+    if 0 < action_sum < len(results) or action_sum < 0: print('No execution - Direction agreement: NO')
     if abs(mean_pred_delta) < pr.pred_delta_threshold: print('No execution - Threshold met: NO')
 
     cycle += 1
@@ -276,4 +276,4 @@ if __name__ == '__main__':
             trade = flow_control[2]
 
         # Buld data up again in case the previous gets is not clean or full
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t , isTrading=1)
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t)

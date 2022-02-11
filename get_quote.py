@@ -132,12 +132,7 @@ def build_dataset(hours, mins):
     get_some(hours_list=hours, minutes_list=mins)
 
 
-def build_dataset_last_t_minutes(t=1, isTrading=0):
-
-    if not isTrading:
-        setup_check = pag.alert(text="1) BROWSER WINDOW AT HALF\n 2) AT QUOTE HISTORY?\n 3) ZOOM LEVEL CORRECT?\n 4) CURRENT SYSTEM PARAM?",
-                                title='>>> CHECKLIST <<<',
-                                button='OK')
+def build_dataset_last_t_minutes(t=1):
 
     # Get time
     start_time = now = datetime.datetime.now()
@@ -161,7 +156,7 @@ if __name__ == '__main__':
     if pr.test_get_some:
         get_some(hours_list=[12], minutes_list=[0])
     if pr.test_build_dataset_last_t:
-        build_dataset_last_t_minutes(t=2, isTrading=1)
+        build_dataset_last_t_minutes(t=2)
         print('Time now is:', datetime.datetime.now())
     if pr.test_build_dataset:
         build_dataset(hours=[10,12,14,16,18,20,22], mins=range(28,49))
