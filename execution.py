@@ -55,8 +55,6 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
 
     # Pop a prompt to make sure manual setup is good.
     if trade_start_chk:
-        setup_check = pag.confirm(text="1) BROWSER WINDOW AT HALF\n 2) AT QUOTE HISTORY?\n 3) ZOOM LEVEL CORRECT?\n 4) CURRENT SYSTEM PARAM?",
-                                  title='>>> CHECKLIST <<<')
         # Print key params for logging
         print('Started at:', datetime.datetime.now(), '\n')
         print('Cross Val Params:')
@@ -66,6 +64,8 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         print('total_trade:', pr.total_trade,'\nlookback_t:', pr.lookback_t)
         print('pred_delta_threshold:',pr.pred_delta_threshold)
         print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds,'\n')
+        setup_check = pag.confirm(text="1) BROWSER WINDOW AT HALF\n 2) AT QUOTE HISTORY?\n 3) ZOOM LEVEL CORRECT?\n 4) CURRENT SYSTEM PARAM?",
+                                  title='>>> CHECKLIST <<<')
         if setup_check == 'Cancel':
             print('\nCancelled by user.')
             return 2
@@ -77,11 +77,11 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
 
     if params_chk and trade_params is not None:
         # Check if params are still default, if so, skip one iteration.
-        default_param = []
-        for i in range(0,pr.number_best_param): default_param.append([])
-        if trade_params == default_param:
-            print('Params still default. Go on to next iteration.\n')
-            return 4
+        default_param = [0,0,1.,0,0,0]
+        for t in trade_params:
+            if t == default_param:
+                print('One or more params still default. Go on to next iteration.\n')
+                return 4
 
     if time_mismatch_chk and df is not None:
         now = datetime.datetime.now().strftime('%H:%M:%S.%f')
@@ -102,7 +102,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
 def get_latest_trade_record(isPrint):
     """
     Sample record pulled from webiiste
-    ['10', 'February', '12:06:45.025', '10', 'February', '12:06:50.025', 'Quote', '5011.31', '5010.84', 'Closed', 'with', 'a', 'profit']
+    ['4928.86', 'February', '11,', '23:27:21', '4928.75', 'February', '11,', '23:27:26', '1.00', '0.00', 'Quickler', '80%', '4920.87', 'February', '11,', '23:18:23', '4920.33', 'February', '11,', '23:18:28', '1.00', '1.80', 'Quickler', '80%', '4925.80', 'February', '11,', '23:13:01', '4926.14', 'February', '11,', '23:13:06', '1.00', '1.80', 'Quickler', '80%', '4869.05', 'February', '11,', '17:50:38', '4868.63', 'February', '11,', '17:50:43', '1.00', '1.80', 'Quickler', '80%', '4866.80', 'February', '11,', '17:33:32', '4866.59', 'February', '11,', '17:33:37', '1.00', '0.00', 'Quickler', '80%', '4864.64', 'February', '11,', '17:22:08', '4866.26', 'February', '11,', '17:22:13', '1.00', '0.00', 'Quickler', '80%', '4858.03', 'February', '11,', '17:19:01', '4859.62', 'February', '11,', '17:19:06', '1.00', '1.80', 'Quickler', '80%', '4864.51', 'February', '11,', '17:11:27', '4864.04', 'February', '11,', '17:11:32', '1.00', '1.80', 'Quickler', '80%', '4865.21', 'February', '11,', '17:10:58'...
     """
     # Swwtich tab. Assume trade record page is on tab 2
     ut.tab_switch(tab=2)
@@ -110,28 +110,29 @@ def get_latest_trade_record(isPrint):
     time.sleep(pr.asset_duration-1)
     # Refresh to make sure we have latest trade.
     pag.hotkey('f5', interval=pr.traderecord_interval_refresh)
-    pag.click(x=pr.olymp_first_trade_record[0], y=pr.olymp_first_trade_record[1], interval=0.2)
+    pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1], interval=0.2)
     pag.hotkey('ctrl', 'a', interval=0.1)
     pag.hotkey('ctrl', 'c', interval=0.1)
     data = Tk().clipboard_get()
-    start_index = data.rfind("Date and time")
-    end_index = data.rfind("Deal verify")
-    data = data[start_index+len("Date and time"):end_index]
+    start_index = data.find("Quickler	80%")
+    data = data[start_index+len("Quickler	80%"):]
+    end_index = data.find("Quickler	80%")
+    data = data[:end_index]
     record = []
     for x in data.split():
         record.append(x)
     if isPrint:
         print('Last trade result:')
-        print('OpenPrice:', record[7], 'ClosePrice:', record[8])
-        print('OpenTime:', record[2], 'CloseTime:',record[5])
-        if record[-1] == 'profit':
+        print('OpenPrice:', record[0], 'ClosePrice:', record[4])
+        print('OpenTime:', record[3], 'CloseTime:',record[7])
+        if record[-1] != '0.00':
             print('Outcome: WIN!!!\n')
-        if record[-1] == 'loss':
+        elif record[-1] == '0.00':
             print('Outcome: LOSS...\n')
-        if record[-1] == 'refund':
+        else:
             print('Outcome: Refund.\n')
     ut.tab_switch(tab=1)
-    return record[2] # time of trade open on platform.
+    return record[3]
 
 
 def demo_trade():
@@ -151,29 +152,48 @@ def trade_small():
     return datetime.datetime.strptime(now, '%H:%M:%S.%f')
 
 
-def update_time_betw_execute_trade_open(execute_time,trade_open_time):
+def update_time_betw_execution_end_and_trade_open(execute_time, trade_open_time):
     print('>>> Time @ trade execution:',execute_time)
-    trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S.%f')
+    trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S')
     # Calc difference between. We should expect trade_open_time to be later.
     diff = trade_open_time - execute_time
-    pr.change_time_onthefly(time_te=diff.total_seconds())
-    print('*** Updated time_taken_by_trade_execution to:', diff.total_seconds(), '\n')
+    pr.change_time_onthefly(time_et=diff.total_seconds()+0.5)
+    print('*** Updated time_betw_execution_end_and_trade_open to:', diff.total_seconds()+0.5, '\n')
+    return
+
+
+def update_time_betw_get_end_and_execution_end(execute_time, start_get_end):
+    print('>>> Time @ trade execution:',execute_time)
+    # Calc difference between. We should expect trade_open_time to be later.
+    start_get_end = datetime.datetime.strptime(start_get_end, '%H:%M:%S.%f')
+    diff = execute_time - start_get_end
+    pr.change_time_onthefly(time_ge=diff.total_seconds())
+    print('*** Updated time_betw_get_end_and_execution_end to:', diff.total_seconds(), '\n')
     return
 
 
 def trade_execution(cycle, trade):
 
     # We cross validate for best params.
-    best_param, picklename, get_one_second, updated_test_time = an.cross_val_trading(lookback_t=pr.lookback_t)
+    best_param, test_range_center = an.cross_val_trading(lookback_t=pr.lookback_t)
 
-    # Check if params are still default, if so, skip one iteration.
+    # Check if any params are still default, if so, skip one iteration.
     if checks(trade_params=best_param, params_chk=True) == 4:
         cycle += 1
         return 1 , cycle, trade
 
     # Print params to be used.
-    print('Using this params for this cycle: [train, delay, NRMSE, lookback_t, test, ridge] ')
-    print(best_param)
+    print('Using these params for this cycle:')
+    print('[[train, delay, NRMSE, lookback_t, test, ridge]]:')
+    for bp in best_param:
+        print(bp)
+
+    # Build + get new data since cross val may have taken some time.
+    # Build data up + get one for the duration that build last took
+    gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
+    picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
+
+    start_get_end = datetime.datetime.now().strftime('%H:%M:%S.%f')
 
     # Load dataframe
     df = an.load(picklename=picklename, lookback=pr.lookback_t_min ,seconds=get_one_second)
@@ -192,19 +212,15 @@ def trade_execution(cycle, trade):
     # Compute what trade actions to take
     # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
     results = []
-    if pr.cross_val_specify_test: test_points = pr.test_points
-    else: test_points = [updated_test_time-0.75,updated_test_time, updated_test_time+0.75]
-    for t in test_points:
-        results.append(
-            an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=-1, train=best_param[0][0], k=best_param[0][1], test=t,
-                            ridge_param=pr.ridge_range[0], isTrg=0, isTrading=1))
-    print('>>> Time @ compute complete : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
-    print('*** Updated_test_time chosen for trade prediction:', updated_test_time)
+    for p in best_param:
+        results.append(an.compute_ngrc(df, warmup=-1, train=p[0], k=p[1], test=p[4],
+                            ridge_param=p[5], isTrg=0, isTrading=1))
+    print('*** test_range_center used for trade prediction:', test_range_center)
 
     # Consolidate results for trade execution.
     test_predictions_quote_delta = []
     for result in results:
-        test_predictions_quote_delta.append(round(result[1],2))
+        test_predictions_quote_delta.append(round(result[2],3))
 
     action_sum = 0
     for result in results:
@@ -230,7 +246,8 @@ def trade_execution(cycle, trade):
                 if results[0][0] != -1:
                     trade += 1
                     trade_opened_time = get_latest_trade_record(isPrint=True)
-                    update_time_betw_execute_trade_open(execute_time=executed_time, trade_open_time=trade_opened_time)
+                    update_time_betw_get_end_and_execution_end(executed_time, start_get_end)
+                    update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
                     if trade == pr.total_trade:
                         end(cycle,trade)
                         return -1, cycle, trade
@@ -267,8 +284,6 @@ if __name__ == '__main__':
         if cycle == 1:
             if checks(cycle, trade_start_chk=True) == 2:
                 break
-            checks(cycle1_warmup_chk=True)
-            an.cross_val_trading(lookback_t=pr.lookback_t)
 
         # We time our getting of data, do cross val do prediction and execute trade if within NRMSE
         flow_control = trade_execution(cycle=cycle, trade=trade)
@@ -279,5 +294,3 @@ if __name__ == '__main__':
             cycle = flow_control[1]
             trade = flow_control[2]
 
-        # Buld data up again in case the previous gets is not clean or full
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t)

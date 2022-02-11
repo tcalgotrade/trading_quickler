@@ -37,7 +37,7 @@ def load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
         minute = int(picklename[-4:][2:4])
         hours_list, minutes_list = ut.hour_min_to_list_t(hour, minute, seconds, t=lookback)
 
-        if pr.test_cross_val_trading and pr.cross_val_past:
+        if pr.test_cross_val_trading and pr.test_cross_val_past:
             hours_list, minutes_list = ut.hour_min_to_list_t(int(pr.test_hour), int(pr.test_minute), int(pr.test_second), t=lookback)
         # We gp through the timings and build up time series of minutes = lookback_t
         unpickled = ''
@@ -130,7 +130,7 @@ def load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
     return df
 
 
-def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg=0, isTrading=0):
+def compute_ngrc(df,warmup, train, k, test, ridge_param, isDebug=0, isInfo=0, isTrg=0, isTrading=0):
 
     # total variance of data
     total_var = np.var(df['quote'])
@@ -424,11 +424,11 @@ def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, thresho
     # Get current date
     date = datetime.datetime.now().strftime("%d%m%Y")
     start_time = datetime.datetime.now().strftime("%d%m%Y%H%M%S%f")
-    if pr.test_cross_val_trading and pr.cross_val_past:
+    if pr.test_cross_val_trading and pr.test_cross_val_past:
         start_time = pr.test_hour+pr.test_minute+datetime.datetime.now().strftime("%S%f")
 
     # Compute NG-RC result and normalized RMSE
-    result = compute_ngrc(df, isDebug=0, isInfo=0, warmup=warm, train=train, k=delay, test=test, ridge_param=ridge,
+    result = compute_ngrc(df, warmup=warm, train=train, k=delay, test=test, ridge_param=ridge,
                           isTrg=1, isTrading=0)
 
     # When result is to take an action, check if within NRMSE threshold. If so, we save param set to pickle.
@@ -458,15 +458,37 @@ def cross_val_multiproc(params):
     return
 
 
+def get_best_params(test_range, now):
+    best_param = []
+    # [[train, delay, test NRMSE, lookback_t, test, ridge]]
+    for i in range(0, pr.number_best_param): best_param.append([0,0,1.,0,0,0])
+    # Open every param pickle file in cross_val folder
+    for file in os.listdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_' + pr.current_system + '/'):
+        # Load pickle
+        with open(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_' + pr.current_system + '/' + file,
+                  'rb') as f:
+            # Sample param pickle: (picklename, seconds, warm, train, delay, test, ridge,
+            #         trg nrmse >>> np.around(result[1], 4), np.around(result[2], 4), <<< test nrmse
+            #                       threshold_test_nrmse, lookback_t)
+            current_param = pickle.load(f)
+        # Init nrmse value for clarity.
+        current_nrmse = current_param[8] ; current_test = current_param[5]
+        # Save set of lowest NRMSE for each item in test_range
+        # [[train, delay, test NRMSE, lookback_t, test, ridge]]
+        for i in range(0, pr.number_best_param):
+            if current_nrmse < best_param[i][2] and pr.number_best_param >= i+1 and current_test == test_range[i]:
+                best_param.pop(i)
+                best_param.insert(i, [current_param[3], current_param[4], current_nrmse, current_param[10],
+                                      current_test, current_param[6]])
+
+    return best_param
+
+
 def cross_val_trading(lookback_t):
 
     # Get date & time
     start_time = now = datetime.datetime.now()
     print('>>> Time @ Cross Val start : ', start_time.strftime("%H:%M:%S.%f"))
-
-    # We have already warmed up prior to cycle start. So we now get one quote at current time.
-    picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
-    start_time_cross_val = datetime.datetime.now()
 
     # Check if folder for today exists
     if not os.path.isdir(pr.data_store_location + now.strftime("%d%m%Y") + '/'):
@@ -476,14 +498,18 @@ def cross_val_trading(lookback_t):
     if not os.path.isdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_'+pr.current_system):
         os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_'+pr.current_system)
 
+    # Build data up + get one for the duration that build last took
+    gq.build_dataset_last_t_minutes(t=pr.lookback_t)
+    picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
+
     # Get all possible combinations of params
-    lookback_t_range = [lookback_t]
-    if pr.cross_val_specify_test:
-        test_range = updated_test_time = pr.test_range
+    if pr.test_cross_val_trading and pr.test_cross_val_specify_test_range:
+        test_range = pr.test_range
+        test_range_center = 0
     else:
-        test_range = updated_test_time = [pr.time_taken_by_trade_execution + pr.time_taken_by_cross_val
-                                          + pr.asset_duration + pr.time_betw_cross_val_and_execution] # note hard coded time between end cross val and trade exec end.
-    bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, lookback_t_range))
+        test_range_center = pr.time_betw_execution_end_and_trade_open + pr.asset_duration + pr.time_betw_get_end_and_execution_end
+        test_range = [test_range_center-1, test_range_center-0.5, test_range_center, test_range_center+0.5, test_range_center+1]
+    bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, [lookback_t]))
     print('# of combinations:', len(bag_of_params))
 
     # Remove contents from last cross_val. We start anew each cross val during trading. No storing of files between cross vals
@@ -496,64 +522,18 @@ def cross_val_trading(lookback_t):
 
     # Find best params. We save the one with lowest test NRMSE
     # [[train, delay, NRMSE, lookback_t, test, ridge]]
-    best_param = []
-    for i in range(0,pr.number_best_param): best_param.append([])
-    first_best_nrmse = 1.; second_best_nrmse = 1.; third_best_nrmse = 1.; fourth_best_nrmse = 1. ; fifth_best_nrmse = 1.
-    sixth_best_nrmse = 1. ; seventh_best_nrmse = 1. ; eighth_best_nrmse = 1. ; ninth_best_nrmse = 1. ; tenth_best_nrmse = 1.
-    # Open every param pickle file in cross_val folder
-    for file in os.listdir(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val_'+pr.current_system+'/'):
-        # Load pickle
-        with open(pr.data_store_location+now.strftime("%d%m%Y")+'/cross_val_'+pr.current_system+'/'+file, 'rb') as f:
-            # Sample param pickle: (picklename, seconds, warm, train, delay, test, ridge,
-            #         trg nrmse >>> np.around(result[1], 4), np.around(result[2], 4), <<< test nrmse
-            #                       threshold_test_nrmse, lookback_t)
-            current_param = pickle.load(f)
-        # Init nrmse value for compare & clarity.
-        current_nrmse = current_param[8]
-        # Save 2 sets of lowest NRMSE
-        # [[train, delay, test NRMSE, lookback_t, test, ridge]]
-        if current_nrmse < first_best_nrmse and pr.number_best_param >=1:
-            first_best_nrmse = current_nrmse
-            best_param.pop(0) ; best_param.insert(0, [current_param[3], current_param[4], first_best_nrmse, current_param[10], current_param[5], current_param[6]])
-        if second_best_nrmse > current_nrmse > first_best_nrmse and pr.number_best_param >=2:
-            second_best_nrmse = current_nrmse
-            best_param.pop(1) ; best_param.insert(1, [current_param[3], current_param[4], second_best_nrmse, current_param[10], current_param[5], current_param[6]])
-        if third_best_nrmse > current_nrmse > second_best_nrmse and pr.number_best_param >=3:
-            third_best_nrmse = current_nrmse
-            best_param.pop(2) ; best_param.insert(2, [current_param[3], current_param[4], third_best_nrmse, current_param[10], current_param[5], current_param[6]])
-        if fourth_best_nrmse > current_nrmse > third_best_nrmse and pr.number_best_param >=4:
-            fourth_best_nrmse = current_nrmse
-            best_param.pop(3) ; best_param.insert(3, [current_param[3], current_param[4], fourth_best_nrmse, current_param[10], current_param[5], current_param[6]])
-        if fifth_best_nrmse > current_nrmse > fourth_best_nrmse and pr.number_best_param >=5:
-            fifth_best_nrmse = current_nrmse
-            best_param.pop(4) ; best_param.insert(4, [current_param[3], current_param[4], fifth_best_nrmse, current_param[10], current_param[5], current_param[6]])
-        if sixth_best_nrmse > current_nrmse > fifth_best_nrmse and pr.number_best_param >=6:
-            sixth_best_nrmse = current_nrmse
-            best_param.pop(5) ; best_param.insert(5, [current_param[3], current_param[4], sixth_best_nrmse, current_param[10], current_param[5], current_param[6]])
-        if seventh_best_nrmse > current_nrmse > sixth_best_nrmse and pr.number_best_param >=7:
-            seventh_best_nrmse = current_nrmse
-            best_param.pop(6) ; best_param.insert(6, [current_param[3], current_param[4], seventh_best_nrmse, current_param[10], current_param[5], current_param[6]])
-        if eighth_best_nrmse > current_nrmse > seventh_best_nrmse and pr.number_best_param >=8:
-            eighth_best_nrmse = current_nrmse
-            best_param.pop(7) ; best_param.insert(7, [current_param[3], current_param[4], eighth_best_nrmse, current_param[10], current_param[5], current_param[6]])
-        if ninth_best_nrmse > current_nrmse > eighth_best_nrmse and pr.number_best_param >=9:
-            ninth_best_nrmse = current_nrmse
-            best_param.pop(8) ; best_param.insert(8, [current_param[3], current_param[4], ninth_best_nrmse, current_param[10], current_param[5], current_param[6]])
-        if tenth_best_nrmse > current_nrmse > ninth_best_nrmse and pr.number_best_param >=10:
-            tenth_best_nrmse = current_nrmse
-            best_param.pop(9) ; best_param.insert(9, [current_param[3], current_param[4], tenth_best_nrmse, current_param[10], current_param[5], current_param[6]])
+    best_param = get_best_params(test_range=test_range, now=now)
 
     if pr.test_cross_val_trading:
-        print('Best params [[train, delay, NRMSE, lookback_t, test, ridge]]:', best_param)
+        print('Best params')
+        print('[[train, delay, NRMSE, lookback_t, test, ridge]]:')
+        for bp in best_param:
+            print(bp)
 
     print('Cross Val took this amount of time:', datetime.datetime.now()-start_time)
     print('>>> Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
 
-    end_time_cross_val = datetime.datetime.now()
-    diff = end_time_cross_val-start_time_cross_val
-    pr.change_time_onthefly(time_cv=diff.total_seconds())
-    print('*** Updated time_taken_by_cross_val:', pr.time_taken_by_cross_val,'\n')
-    return best_param, picklename, get_one_second, updated_test_time[0]
+    return best_param, test_range_center
 
 
 if __name__ == '__main__':

@@ -60,7 +60,7 @@ def get_one_now():
     minute_front = now.strftime("%M")[0]
     minute_back = now.strftime("%M")[1]
 
-    if pr.test_cross_val_trading and pr.cross_val_past:
+    if pr.test_cross_val_trading and pr.test_cross_val_past:
         hour_front = pr.test_hour[0]; hour_back = pr.test_hour[1]
         min_front = pr.test_minute[0]; min_back = pr.test_minute[1]
 
@@ -85,7 +85,7 @@ def get_one_now():
         pickle.dump(data, f)
 
     picklename = pr.data_store_location+date+'/'+hour_front+hour_back+minute_front+minute_back
-    if pr.test_cross_val_trading and pr.cross_val_past:
+    if pr.test_cross_val_trading and pr.test_cross_val_past:
         return picklename, int(pr.test_hour), int(pr.test_second), int(pr.test_second)
     return picklename, now.hour, now.minute, now.second
 
@@ -168,7 +168,7 @@ def build_dataset_last_t_minutes(t=1):
     # To use cross_val_trading to look back at a particular minute and lookback_t before it.
     current_hour = now.hour ; current_min = now.minute ; current_sec = now.second
 
-    if pr.test_cross_val_trading and pr.cross_val_past:
+    if pr.test_cross_val_trading and pr.test_cross_val_past:
         current_hour = int(pr.test_hour); current_min = int(pr.test_minute); current_sec = int(pr.test_second)
 
     hours , minutes = ut.hour_min_to_list_t(current_hour, current_min, current_sec, t=t)
