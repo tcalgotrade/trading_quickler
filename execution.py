@@ -28,8 +28,6 @@ def execute(signal):
     if signal == 0:
         pag.click(x=pr.oylmp_down[0], y=pr.oylmp_down[1])
         print('Bought DOWN')
-    if signal == -1:
-        print('No trade taken: all results are outside of pred_delta tolerance.')
 
     now = datetime.datetime.now().strftime("%H:%M:%S.%f")
     print('>>> Time @ execute complete : ', now)
@@ -88,14 +86,18 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         now = datetime.datetime.now().strftime('%H:%M:%S.%f')
         now = datetime.datetime.strptime(now, '%H:%M:%S.%f')
         data_time = df['time'].astype(str)
-        data_last_time = datetime.datetime.strptime(data_time.iloc[-1], '%H:%M:%S.%f')
+        if len(data_time.iloc[-1]) == 8:
+            data_last_time_string = data_time.iloc[-1] +'.000'
+        else:
+            data_last_time_string = data_time.iloc[-1]
+        data_last_time = datetime.datetime.strptime(data_last_time_string, '%H:%M:%S.%f')
         diff = now - data_last_time
         if diff.total_seconds() < 0:
             print('Time mismatch - Diff of ', diff.total_seconds())
             return 5
     return
 
-
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.2) , stop=te.stop_after_attempt(3))
 def get_latest_trade_record(isPrint):
     """
     Sample record pulled from webiiste
@@ -112,7 +114,8 @@ def get_latest_trade_record(isPrint):
     pag.hotkey('ctrl', 'c', interval=0.1)
     data = Tk().clipboard_get()
     start_index = data.rfind("Date and time")
-    data = data[start_index+len("Date and time"):start_index+len("Date and time")+119]
+    end_index = data.rfind("Deal verify")
+    data = data[start_index+len("Date and time"):end_index]
     record = []
     for x in data.split():
         record.append(x)
@@ -120,11 +123,11 @@ def get_latest_trade_record(isPrint):
         print('Last trade result:')
         print('OpenPrice:', record[7], 'ClosePrice:', record[8])
         print('OpenTime:', record[2], 'CloseTime:',record[5])
-        if record[-1] == 'prof':
+        if record[-1] == 'profit':
             print('Outcome: WIN!!!\n')
         if record[-1] == 'loss':
             print('Outcome: LOSS...\n')
-        if record[-1] == 'refu':
+        if record[-1] == 'refund':
             print('Outcome: Refund.\n')
     ut.tab_switch(tab=1)
     return record[2] # time of trade open on platform.
@@ -189,7 +192,7 @@ def trade_execution(cycle, trade):
     # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
     results = []
     if pr.cross_val_specify_test: test_points = pr.test_points
-    else: test_points = [updated_test_time-0.5,updated_test_time, updated_test_time+0.5]
+    else: test_points = [updated_test_time-0.75,updated_test_time, updated_test_time+0.75]
     for t in test_points:
         results.append(
             an.compute_ngrc(df, isDebug=0, isInfo=0, warmup=-1, train=best_param[0][0], k=best_param[0][1], test=t,

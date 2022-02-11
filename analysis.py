@@ -167,9 +167,14 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
         # When trading, we do not need test data.
         traintime_pts = round(traintime / dt)
         testtime_pts = round(testtime / dt)
+        if traintime_pts < 0 or testtime_pts < 0:
+            print('Invalid train & test time points :', traintime_pts, testtime_pts, dt)
+            return -1, 0
         if warmup > 0: warmup_pts = round(warmup / dt)
         if warmup == -1: warmup_pts = r - traintime_pts
-        if warmup < -1: print('Invalid warmup seconds while trading', warmup) ; return -1, 0
+        if warmup < -1:
+            print('Invalid warmup seconds while trg', warmup)
+            return -1, 0
         warmtrain_pts = warmup_pts + traintime_pts
         maxtime_pts = warmtrain_pts
 
@@ -345,7 +350,6 @@ def compute_ngrc(df, isDebug, isInfo, warmup, train, k, test, ridge_param, isTrg
             test_predictions = x_test[0:d, 0:testtime_pts]
             # We compute price diff between then and now
             test_predictions_quote_delta = test_predictions[0, -1] - test_predictions[0, 0]
-            # We sum up price diffs to find out whether we will be up or down at desired test time.
 
         if isDebug:
             print('warm:', warmup)
@@ -554,17 +558,18 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()
     # Force a manual cross val for trading
     if pr.test_cross_val_trading:
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t)
+        if pr.cross_val_build_data or not pr.cross_val_past:
+            gq.build_dataset_last_t_minutes(t=pr.lookback_t,isTrading=0)
         cross_val_trading(lookback_t=pr.lookback_t)
 
     # Quick test load.
     if pr.test_load_function:
-        df = load(picklename=pr.data_store_location + '08022022/0847', lookback=pr.lookback_t ,seconds=15, isDebug=True)
+        df = load(picklename=pr.data_store_location + '11022022/1058', lookback=pr.lookback_t ,seconds=15, isDebug=True)
 
     # Quick test compute
     if pr.test_compute_function:
-        df = load(picklename=pr.data_store_location + '11022022/1253', lookback=pr.lookback_t ,seconds=15, isDebug=True)
-        result = compute_ngrc(df, isDebug=0, isInfo=1, warmup=-1, train=5, k=4, test=10, ridge_param=10, isTrg=1,
+        df = load(picklename=pr.data_store_location + '08022022/1359', lookback=pr.lookback_t ,seconds=15, isDebug=True)
+        result = compute_ngrc(df, isDebug=0, isInfo=1, warmup=-1, train=10, k=2, test=10, ridge_param=8, isTrg=1,
                               isTrading=0)
         print('Result:', result)
 
