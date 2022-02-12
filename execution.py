@@ -312,15 +312,12 @@ def trade_execution(cycle, trade, total_wins):
                 trade += 1
 
                 # Get trade record + update timings. 2 methods to get record.
+                # Check if what we got is legit, if not, try another approach.
                 trade_opened_time, won = get_latest_trade_record(isPrint=True, approach=2)
-                total_wins += won
-
+                if len(trade_opened_time) != 12 and ':' not in trade_opened_time:
+                    trade_opened_time, won = get_latest_trade_record(isPrint=True, approach=1)
                 update_time_betw_get_end_and_execution_end(executed_time, start_get_end)
-                try:
-                    update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
-                except:
-                    trade_opened_time = get_latest_trade_record(isPrint=True, approach=1)
-                    update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
+                total_wins += won
 
     # Output why we did not take action.
     if time_mismatch == 1: print('No execution - Time Mismatch: YES')
