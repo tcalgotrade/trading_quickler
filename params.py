@@ -1,6 +1,6 @@
 import numpy as np
 
-current_system = 'z400'
+current_system = 'rested'
 asset_name = "Quickler"
 asset_duration = 5 # in seconds
 
@@ -68,7 +68,7 @@ test_compute_function = False
 test_cross_val_trading = False
 test_cross_val_past = False
 test_cross_val_specify_test_range = False
-test_force_trade = True
+test_force_trade = False
 
 if test_cross_val_past:
     test_hour = '16' ; test_minute = '20' ; test_second = '15'
@@ -78,27 +78,28 @@ if test_cross_val_specify_test_range:
     test_points = [test_range[0] - 1.5, test_range[0], test_range[0] + 1.5]
 
 if test_cross_val_trading:
-    lookback_t =  5# Larger values of lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
+    lookback_t =  5 # Larger values of lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
     warm_range = np.arange(45,lookback_t*60,45) ; warm_range = np.append(warm_range,-1)  # In seconds. -1 to train and test on as close to current as possible. Must be > 0
     train_range = range(5,10) # In seconds
     delay_range = range(25,35) # In seconds
     ridge_range = np.linspace(0,3e-7,5)
     threshold_test_nrmse = [1] # Set to 1 to allow all to show up
 else:
-    lookback_t = 5  # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
-    warm_range = np.arange(1,(lookback_t-1)*60,30) ; warm_range = np.append(warm_range,-1) # In seconds. -1 to train and test on as close to current as possible. Must be > 0
-    train_range = range(5,10) # In seconds
+    lookback_t = 4  # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
+    warm_range = np.arange(45,(lookback_t-1)*60,45) ; warm_range = np.append(warm_range,-1) # In seconds. -1 to train and test on as close to current as possible. Must be > 0
+    train_range = [7] # In seconds
     delay_range = range(25,30) # In seconds
-    ridge_range = np.linspace(0,1e-8,5)
+    ridge_range = [1e-8]
     threshold_test_nrmse = [0.1] # Set to 1 to allow all to show up
 
 # Trade Execution Params
 lookback_t_min = 2 # Only read by compute() when predicting for trade.
-total_trade = 100
-pred_delta_threshold = 0.75
+total_trade = 5
+pred_delta_threshold = 1
 time_to_get_quote_seconds = 2.1
 interval_typew = 0
 traderecord_interval_refresh = 3
+random_sleep = False
 
 # Params for how far ahead to predict
 time_betw_execution_end_and_trade_open = 1.5 # Updated after every trade.
