@@ -98,7 +98,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
             return 5
     return
 
-@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.2) , stop=te.stop_after_attempt(10))
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_exponential(multiplier=1, min=0.2, max=3) , stop=te.stop_after_attempt(10))
 def get_latest_trade_record(isPrint, approach):
 
     # Swwtich tab. Assume trade record page is on tab 2
@@ -371,4 +371,3 @@ if __name__ == '__main__':
             cycle = trade_stats[1]
             trade = trade_stats[2]
             total_wins = trade_stats[3]
-
