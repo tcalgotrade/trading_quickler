@@ -34,11 +34,12 @@ def execute(signal):
     return datetime.datetime.strptime(now, '%H:%M:%S.%f')
 
 
-def end(cycle, trade):
+def end(cycle, trade, total_wins):
     # Print some numbers
     print('\n/****************************************************************************/\n')
     print('Final Cycle # : ', cycle)
     print('Final Trade executed: ', trade)
+    print('Final Wins: ', total_wins)
     return
 
 
@@ -346,7 +347,7 @@ def trade_execution(cycle, trade, total_wins):
 
     # Check if we have traded enough.
     if trade == pr.total_trade:
-        end(cycle,trade)
+        end(cycle,trade, total_wins)
         return -1, cycle, trade, total_wins
 
     # Go onto next cycle.
