@@ -210,12 +210,18 @@ def update_time_betw_execution_end_and_trade_open(execute_time, trade_open_time)
     # Calc difference between. We should expect trade_open_time to be later.
     diff = trade_open_time_formatted - execute_time
 
+    # Sanity Check
+    if diff.total_seconds() < 0 or diff.total_seconds() > 2:
+        new_time = 1.5
+    else:
+        new_time = diff.total_seconds()
+
     if len(trade_open_time) == 8:
         # If we are missing decimals, we add a bit of margin.
-        pr.change_time_onthefly(time_et=diff.total_seconds()+0.5)
+        pr.change_time_onthefly(time_et=new_time+0.5)
         print('*** Updated time_betw_execution_end_and_trade_open to:', diff.total_seconds() + 0.5, '\n')
     elif len(trade_open_time) == 12:
-        pr.change_time_onthefly(time_et=diff.total_seconds())
+        pr.change_time_onthefly(time_et=new_time)
         print('*** Updated time_betw_execution_end_and_trade_open to:', diff.total_seconds(), '\n')
     else:
         raise Exception
@@ -224,10 +230,16 @@ def update_time_betw_execution_end_and_trade_open(execute_time, trade_open_time)
 
 def update_time_betw_get_end_and_execution_end(execute_time, start_get_end):
     print('>>> Time @ trade execution:',execute_time)
+
     # Calc difference between. We should expect trade_open_time to be later.
     start_get_end = datetime.datetime.strptime(start_get_end, '%H:%M:%S.%f')
     diff = execute_time - start_get_end
-    pr.change_time_onthefly(time_ge=diff.total_seconds())
+
+    # Sanity check
+    if diff.total_seconds() < 0 or diff.total_seconds() > 1:
+        pr.change_time_onthefly(time_ge=0.5)
+    else:
+        pr.change_time_onthefly(time_ge=diff.total_seconds())
     print('*** Updated time_betw_get_end_and_execution_end to:', diff.total_seconds(), '\n')
     return
 
