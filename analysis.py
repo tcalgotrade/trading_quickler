@@ -459,7 +459,7 @@ def cross_val_multiproc(params):
 def get_best_params(test_range, now):
     best_param = []
     # [[train, delay, test NRMSE, lookback_t, test, ridge]]
-    for i in range(0, pr.number_best_param): best_param.append([0,0,1.,0,0,0])
+    for i in range(0, len(test_range)): best_param.append([0,0,1.,0,0,0])
     # Open every param pickle file in cross_val folder
     for file in os.listdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_' + pr.current_system + '/'):
         # Load pickle
@@ -473,8 +473,8 @@ def get_best_params(test_range, now):
         current_nrmse = current_param[8] ; current_test = current_param[5]
         # Save set of lowest NRMSE for each item in test_range
         # [[train, delay, test NRMSE, lookback_t, test, ridge]]
-        for i in range(0, pr.number_best_param):
-            if current_nrmse < best_param[i][2] and pr.number_best_param >= i+1 and current_test == test_range[i]:
+        for i in range(0, len(test_range)):
+            if current_nrmse < best_param[i][2] and len(test_range) >= i+1 and current_test == test_range[i]:
                 best_param.pop(i)
                 best_param.insert(i, [current_param[3], current_param[4], current_nrmse, current_param[10],
                                       current_test, current_param[6]])
@@ -503,10 +503,10 @@ def cross_val_trading(lookback_t):
     # Get all possible combinations of params
     if pr.test_cross_val_trading and pr.test_cross_val_specify_test_range:
         test_range = pr.test_range
-        test_range_center = 0
+        test_range_center = np.mean(test_range)
     else:
         test_range_center = pr.time_betw_execution_end_and_trade_open + pr.asset_duration + pr.time_betw_get_end_and_execution_end
-        test_range = [test_range_center-1, test_range_center-0.5, test_range_center, test_range_center+0.5, test_range_center+1]
+        test_range = [test_range_center-1.5, test_range_center-1, test_range_center-0.5, test_range_center, test_range_center+0.5, test_range_center+1, test_range_center+1.5]
     bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, [lookback_t]))
     print('# of combinations:', len(bag_of_params))
 

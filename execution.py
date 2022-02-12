@@ -6,7 +6,6 @@ from tkinter import Tk
 import datetime
 import time
 import multiprocessing
-import pickle
 import params as pr
 import utility as ut
 import tenacity as te
@@ -98,7 +97,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
             return 5
     return
 
-@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.2) , stop=te.stop_after_attempt(3))
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.2) , stop=te.stop_after_attempt(10))
 def get_latest_trade_record(isPrint, approach):
 
     # Swwtich tab. Assume trade record page is on tab 2
@@ -193,13 +192,13 @@ def trade_small():
 def update_time_betw_execution_end_and_trade_open(execute_time, trade_open_time):
     print('>>> Time @ trade execution:',execute_time)
     if len(trade_open_time) == 8:
-        trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S')
+        trade_open_time_formatted = datetime.datetime.strptime(trade_open_time, '%H:%M:%S')
     elif len(trade_open_time) == 12:
-        trade_open_time = datetime.datetime.strptime(trade_open_time, '%H:%M:%S.%f')
+        trade_open_time_formatted = datetime.datetime.strptime(trade_open_time, '%H:%M:%S.%f')
     else:
         raise Exception
     # Calc difference between. We should expect trade_open_time to be later.
-    diff = trade_open_time - execute_time
+    diff = trade_open_time_formatted - execute_time
 
     if len(trade_open_time) == 8:
         # If we are missing decimals, we add a bit of margin.
@@ -222,109 +221,112 @@ def update_time_betw_get_end_and_execution_end(execute_time, start_get_end):
     print('*** Updated time_betw_get_end_and_execution_end to:', diff.total_seconds(), '\n')
     return
 
-
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(10))
 def trade_execution(cycle, trade):
-    try:
-        # We cross validate for best params.
-        best_param, test_range_center = an.cross_val_trading(lookback_t=pr.lookback_t)
 
-        # Check if any params are still default, if so, skip one iteration.
-        if checks(trade_params=best_param, params_chk=True) == 4:
-            cycle += 1
-            return 1 , cycle, trade
+    # We cross validate for best params.
+    best_param, test_range_center = an.cross_val_trading(lookback_t=pr.lookback_t)
 
-        # Print params to be used.
-        print('Using these params for this cycle:')
-        print('[[train, delay, NRMSE, lookback_t, test, ridge]]:')
-        for bp in best_param:
-            print(bp)
+    # Check if any params are still default, if so, skip one iteration.
+    if checks(trade_params=best_param, params_chk=True) == 4:
+        cycle += 1
+        return 1 , cycle, trade
 
-        # Build + get new data since cross val may have taken some time.
-        # Build data up + get one for the duration that build last took
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
-        picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
+    # Print params to be used.
+    print('Using these params for this cycle:')
+    print('[[train, delay, NRMSE, lookback_t, test, ridge]]:')
+    for bp in best_param:
+        print(bp)
 
-        start_get_end = datetime.datetime.now().strftime('%H:%M:%S.%f')
+    # Build + get new data since cross val may have taken some time.
+    # Build data up + get one for the duration that build last took
+    gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
+    picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
 
-        # Load dataframe
-        df = an.load(picklename=picklename, lookback=pr.lookback_t_min ,seconds=get_one_second)
-        print('Loaded pickle used for prediction for trading ... :', picklename)
-        print('Dataframe Statistics:')
-        print('>>> Time @ first row:', df['time'].iloc[0])
-        print('>>> Time @ last row:', df['time'].iloc[-1])
-        print('Mean of quote history:', np.mean(df['quote']))
-        print('Std Dev of quote history:', np.std(df['quote']))
+    start_get_end = datetime.datetime.now().strftime('%H:%M:%S.%f')
 
-        # Check current min/sec vs min/sec of last row of dataframe.
+    # Load dataframe
+    df = an.load(picklename=picklename, lookback=pr.lookback_t_min ,seconds=get_one_second)
+    print('Loaded pickle used for prediction for trading ... :', picklename)
+    print('Dataframe Statistics:')
+    print('>>> Time @ first row:', df['time'].iloc[0])
+    print('>>> Time @ last row:', df['time'].iloc[-1])
+    print('Mean of quote history:', np.mean(df['quote']))
+    print('Std Dev of quote history:', np.std(df['quote']))
+
+    # Check current min/sec vs min/sec of last row of dataframe.
+    time_mismatch = 0
+    if checks(df=df, time_mismatch_chk=True) == 5:
+        time_mismatch = 1
+
+    # Compute what trade actions to take
+    # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
+    results = []
+    for p in best_param:
+        results.append(an.compute_ngrc(df, warmup=-1, train=p[0], k=p[1], test=p[4],
+                            ridge_param=p[5], isTrg=0, isTrading=1))
+    print('*** test_range_center used for trade prediction:', test_range_center)
+
+    # Consolidate results for trade execution.
+    test_predictions_quote_delta = []
+    for result in results:
+        test_predictions_quote_delta.append(round(result[2],3))
+
+    action_sum = 0
+    for result in results:
+        action_sum += result[0]
+    if action_sum == len(results):
+        action_sum = 1
+
+    # Calc basic stats of delta of price prediction.
+    mean_pred_delta = np.mean(test_predictions_quote_delta)
+    stdev_pred_delta = np.std(test_predictions_quote_delta)
+    print('All results pred delta:', test_predictions_quote_delta)
+    print('Average of all results pred delta:', mean_pred_delta)
+    print('Std Dev of all results pred delta:', stdev_pred_delta, '\n')
+
+    # Force a trade for testing purposes.
+    if pr.test_force_trade:
         time_mismatch = 0
-        if checks(df=df, time_mismatch_chk=True) == 5:
-            time_mismatch = 1
-
-        # Compute what trade actions to take
-        # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
-        results = []
-        for p in best_param:
-            results.append(an.compute_ngrc(df, warmup=-1, train=p[0], k=p[1], test=p[4],
-                                ridge_param=p[5], isTrg=0, isTrading=1))
-        print('*** test_range_center used for trade prediction:', test_range_center)
-
-        # Consolidate results for trade execution.
-        test_predictions_quote_delta = []
-        for result in results:
-            test_predictions_quote_delta.append(round(result[2],3))
-
         action_sum = 0
-        for result in results:
-            action_sum += result[0]
+        mean_pred_delta = 999
 
-        # Calc basic stats of delta of price prediction.
-        mean_pred_delta = np.mean(test_predictions_quote_delta)
-        stdev_pred_delta = np.std(test_predictions_quote_delta)
-        print('All results pred delta:', test_predictions_quote_delta)
-        print('Average of all results pred delta:', mean_pred_delta)
-        print('Std Dev of all results pred delta:', stdev_pred_delta, '\n')
+    # Trade Execution
+    if time_mismatch != 1:
+        print('Time Mismatch: NO')
 
-        # Trade Execution
-        if time_mismatch != 1:
-            print('Time Mismatch: NO')
+        if action_sum == 0 or action_sum == 1:
+            print('Direction agreement: YES ')
 
-            if action_sum == 0 or action_sum == len(results):
-                print('Direction agreement: YES ')
+            # Check if mean of delta is above threshold.
+            if abs(mean_pred_delta) > pr.pred_delta_threshold:
+                print('Threshold met: YES')
 
-                # Check if mean of delta is above threshold.
-                if abs(mean_pred_delta) > pr.pred_delta_threshold:
-                    print('Threshold met: YES')
+                # Hit it!
+                executed_time = execute(signal=action_sum) ; trade += 1
 
-                    # Hit it!
-                    executed_time = execute(signal=results[0][0]) ; trade += 1
+                # Get trade record + update timings. 2 methods to get record.
+                trade_opened_time = get_latest_trade_record(isPrint=True, approach=2)
+                update_time_betw_get_end_and_execution_end(executed_time, start_get_end)
+                try:
+                    update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
+                except:
+                    trade_opened_time = get_latest_trade_record(isPrint=True, approach=1)
+                    update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
 
-                    # Get trade record + update timings. 2 methods to get record.
-                    trade_opened_time = get_latest_trade_record(isPrint=True, approach=2)
-                    update_time_betw_get_end_and_execution_end(executed_time, start_get_end)
-                    try:
-                        update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
-                    except:
-                        trade_opened_time = get_latest_trade_record(isPrint=True, approach=1)
-                        update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
+    # Output why we did not take action.
+    if time_mismatch == 1: print('No execution - Time Mismatch: YES')
+    if 0 < action_sum < len(results) or action_sum < 0: print('No execution - Direction agreement: NO')
+    if abs(mean_pred_delta) < pr.pred_delta_threshold: print('No execution - Threshold met: NO')
 
-        # Output why we did not take action.
-        if time_mismatch == 1: print('No execution - Time Mismatch: YES')
-        if 0 < action_sum < len(results) or action_sum < 0: print('No execution - Direction agreement: NO')
-        if abs(mean_pred_delta) < pr.pred_delta_threshold: print('No execution - Threshold met: NO')
+    # Check if we have traded enough.
+    if trade == pr.total_trade:
+        end(cycle,trade)
+        return -1, cycle, trade
 
-        # Check if we have traded enough.
-        if trade == pr.total_trade:
-            end(cycle,trade)
-            return -1, cycle, trade
-
-        # Go onto next cycle.
-        cycle += 1
-        return 0 , cycle, trade
-
-    except:
-        # Gracefully gi to next cycle if anything above raises exception.
-        cycle += 1
-        return 0, cycle, trade
+    # Go onto next cycle.
+    cycle += 1
+    return 0 , cycle, trade
 
 
 if __name__ == '__main__':
