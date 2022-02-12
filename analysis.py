@@ -524,8 +524,8 @@ if __name__ == '__main__':
 
     # Quick test compute
     if pr.test_compute_function:
-        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '12022022/1215', lookback=pr.lookback_t, seconds=15, isDebug=True)
-        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=10, k=25,
-                              test=7, ridge_param=1e-7, isDebug=0, isInfo=True, isTrg=True, isTrading=False)
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '12022022/2030', lookback=pr.lookback_t, seconds=15, isDebug=True)
+        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=8, k=25,
+                              test=7, ridge_param=1e-8, isDebug=0, isInfo=True, isTrg=True, isTrading=False)
         print('Result:', result)
 

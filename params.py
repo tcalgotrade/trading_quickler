@@ -79,10 +79,10 @@ if test_cross_val_specify_test_range:
 
 if test_cross_val_trading:
     lookback_t =  5 # Larger values of lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
-    warm_range = np.arange(45,lookback_t*60,45) ; warm_range = np.append(warm_range,-1)  # In seconds. -1 to train and test on as close to current as possible. Must be > 0
-    train_range = range(5,10) # In seconds
-    delay_range = range(25,35) # In seconds
-    ridge_range = np.linspace(0,3e-7,5)
+    warm_range = np.arange(45,(lookback_t-1)*60,60) ; warm_range = np.append(warm_range,-1)  # In seconds. -1 to train and test on as close to current as possible. Must be > 0
+    train_range = range(2,30) # In seconds
+    delay_range = range(2,30) # In seconds
+    ridge_range = np.linspace(1e-8,1e-7,2)
     threshold_test_nrmse = [1] # Set to 1 to allow all to show up
 else:
     lookback_t = 4  # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
@@ -101,7 +101,7 @@ interval_typew = 0
 traderecord_interval_refresh = 3
 random_sleep = False
 random_sleep_min = 1
-random_sleep_max = 10
+random_sleep_max = 15
 
 # Params for how far ahead to predict
 time_betw_execution_end_and_trade_open = 1.5 # Updated after every trade.

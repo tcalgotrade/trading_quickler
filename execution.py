@@ -80,6 +80,9 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         default_param = [0,0,1.,0,0,0]
         for t in trade_params:
             if t == default_param:
+                print('Params:')
+                for p in trade_params:
+                    print(p)
                 print('One or more params still default. Go on to next iteration.\n')
                 return 4
 
@@ -362,12 +365,11 @@ if __name__ == '__main__':
         print('\n/****************************************************************************/\n')
         print('Cycle # : ', cycle) ; print(total_wins, ' wins / ', trade ,' trades  \n')
 
-        # Some checks to make sure we're good before trading.
+        # Check to see if we are close to change of day.
         if checks(day_change_chk=True) == 1:
             # Sleep for few minutes for data to build up.
-            # If we do not sleep, will have issues with hour_min_to_list_t
             time.sleep((pr.lookback_t+1)*60)
-            if pr.olymp_day is not None:
+            if pr.olymp_day is not None or pr.olymp_day != ():
                 # Change date with PyAutoGUI only if we have date
                 ut.date_changer()
             else:
