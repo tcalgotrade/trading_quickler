@@ -140,23 +140,23 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
         print(traceback.format_exc())
         return
 
-@jit(nopython=False)
+# @jit(nopython=False)
 def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
                  warmup, train, k, test, ridge_param,
                  isDebug=False, isInfo=False, isTrg=False, isTrading=False):
 
     # units of time to warm up NVAR. need to have warmup_pts >= 1, in seconds
-    warmuptime = numba.float64(warmup)
+    warmuptime = np.float64(warmup)
     # units of time to train for, in seconds
-    traintime = numba.float64(train)
+    traintime = np.float64(train)
     # units of time to test for, in seconds
-    testtime = numba.float64(test)
+    testtime = np.float64(test)
     # ridge parameter for regression
-    ridge_param = numba.float64(ridge_param)
+    ridge_param = np.float64(ridge_param)
 
     # Convert to numba types
-    rows_in_df = numba.int64(rows_in_df) ; cols_in_df = numba.int64(cols_in_df)
-    total_var = numba.float64(total_var) ; dt = numba.float64(dt)
+    rows_in_df = np.int64(rows_in_df) ; cols_in_df = np.int64(cols_in_df)
+    total_var = np.float64(total_var) ; dt = np.float64(dt)
 
     # discrete-time versions of the times defined above
     # Note difference between time and number of time points
@@ -165,52 +165,54 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
     # warmup_pts - Number of 'dt' to have before train and test
     # warmtrain_pts - Number of 'dt' sum of warmup_pts and traintime_pts
     # maxtime_pts - # Number of dt sum of warm and train+tes if trg, less test if trading
-    traintime_pts = numba.int64(np.round(traintime / dt))
-    testtime_pts = numba.int64(np.round(testtime / dt))
+    traintime_pts = np.int64(np.round(traintime / dt))
+    testtime_pts = np.int64(np.round(testtime / dt))
     if isTrg:
-        if traintime_pts < numba.int64(0) or testtime_pts < numba.int64(0):
+        if traintime_pts < np.int64(0) or testtime_pts < np.int64(0):
             print('Invalid train & test time points :', traintime_pts, testtime_pts, dt)
             return
-        if warmuptime > numba.float64(0): warmup_pts = np.round(warmuptime / dt)
-        if warmuptime == numba.float64(-1): warmup_pts = rows_in_df - (traintime_pts+testtime_pts)
-        if warmuptime < numba.float64(-1):
+        if warmuptime > np.float64(0): warmup_pts = np.round(warmuptime / dt)
+        if warmuptime == np.float64(-1): warmup_pts = rows_in_df - (traintime_pts+testtime_pts)
+        if warmuptime < np.float64(-1):
             print('Invalid warmuptime seconds while trg', warmuptime)
             warmup_pts = rows_in_df - (traintime_pts+testtime_pts)
-        warmtrain_pts = numba.int64(warmup_pts) + traintime_pts
-        maxtime_pts = numba.int64(warmtrain_pts + testtime_pts)
+        warmup_pts = np.int64(warmup_pts)
+        warmtrain_pts = warmup_pts + traintime_pts
+        maxtime_pts = np.int64(warmtrain_pts + testtime_pts)
 
     if isTrading:
         # When trading, we do not need test data.
-        if traintime_pts < numba.int64(0) or testtime_pts < numba.int64(0):
+        if traintime_pts < np.int64(0) or testtime_pts < np.int64(0):
             print('Invalid train & test time points :', traintime_pts, testtime_pts, dt)
             return
-        if warmuptime > numba.float64(0): warmup_pts = np.round(warmuptime / dt)
-        if warmuptime == numba.float64(-1): warmup_pts = rows_in_df - (traintime_pts)
-        if warmuptime < numba.float64(-1):
+        if warmuptime > np.float64(0): warmup_pts = np.round(warmuptime / dt)
+        if warmuptime == np.float64(-1): warmup_pts = rows_in_df - (traintime_pts)
+        if warmuptime < np.float64(-1):
             print('Invalid warmuptime seconds while trg', warmuptime)
             warmup_pts = rows_in_df - (traintime_pts)
-        warmtrain_pts = numba.int64(warmup_pts) + traintime_pts
-        maxtime_pts = numba.int64(warmtrain_pts)
+        warmup_pts = np.int64(warmup_pts)
+        warmtrain_pts = np.int64(warmup_pts) + traintime_pts
+        maxtime_pts = np.int64(warmtrain_pts)
 
     if maxtime_pts > rows_in_df: print('Not enough data for desired maxtime_pts vs rows', maxtime_pts, rows_in_df) ; return
 
     # input dimension
-    d = numba.int64(1)
+    d = np.int64(1)
     # number of time delay taps
-    k = numba.int64(k)
+    k = np.int64(k)
     # size of linear part of feature vector
-    dlin = numba.int64(k * d)
+    dlin = np.int64(k * d)
     # size of nonlinear part of feature vector
-    dnonlin = numba.int64(dlin * (dlin + 1) / 2)
+    dnonlin = np.int64(dlin * (dlin + 1) / 2)
     # total size of feature vector: constant + linear + nonlinear
-    dtot = numba.int64(1 + dlin + dnonlin)
+    dtot = np.int64(1 + dlin + dnonlin)
 
     ##
     ## NVAR
     ##
 
     # create an array to hold the linear part of the feature vector, https://is.gd/OaiCHN
-    x = np.zeros((dlin, maxtime_pts), dtype=numba.float64)
+    x = np.zeros((dlin, maxtime_pts), dtype=np.float64)
 
     """ 
     Fill in the linear part of the feature vector for all times
@@ -245,7 +247,7 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
         create an array to hold the full feature vector for training time
         (use ones so the constant term is already 1)
         """
-        out_train = np.ones((dtot, traintime_pts), dtype=numba.float64)
+        out_train = np.ones((dtot, traintime_pts), dtype=np.float64)
 
         """
         Copy over the linear part (shift over by one to account for constant)
@@ -263,6 +265,7 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
                 cnt += 1
     except Exception:
         print('Something went wrong when computing : out_train ')
+        print(traceback.format_exc())
         return
 
 
@@ -287,11 +290,11 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
         return
 
     # calculate NRMSE between true quote and training output
-    trg_nrmse = numba.float64(np.sqrt(np.mean((x[0:d, warmup_pts:warmtrain_pts] - x_predict[:, :]) ** 2) / total_var))
+    trg_nrmse = np.float64(np.sqrt(np.mean((x[0:d, warmup_pts:warmtrain_pts] - x_predict[:, :]) ** 2) / total_var))
 
     # create a place to store feature vectors for prediction
-    out_test = np.zeros(dtot, dtype=numba.float64)  # full feature vector
-    x_test = np.zeros((dlin, testtime_pts), dtype=numba.float64)  # linear part
+    out_test = np.zeros(dtot, dtype=np.float64)  # full feature vector
+    x_test = np.zeros((dlin, testtime_pts), dtype=np.float64)  # linear part
 
     try:
         # copy over initial linear feature vector
@@ -320,9 +323,9 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
         if isTrg:
             # Calculate NRMSE between ground_truth and test_predictions.
             # Only makes sense if we are training/cross val
-            test_nrmse = numba.float64(np.sqrt(np.mean((x[0:d, warmtrain_pts - 1:warmtrain_pts + testtime_pts - 1] - x_test[0:d, 0:testtime_pts]) ** 2) / total_var))
+            test_nrmse = np.float64(np.sqrt(np.mean((x[0:d, warmtrain_pts - 1:warmtrain_pts + testtime_pts - 1] - x_test[0:d, 0:testtime_pts]) ** 2) / total_var))
         else:
-            test_nrmse = numba.float64(0)
+            test_nrmse = np.float64(0)
     except Exception:
         return
 
@@ -482,7 +485,7 @@ def cross_val_trading(lookback_t):
         test_range_center = np.mean(test_range)
     else:
         test_range_center = pr.time_betw_execution_end_and_trade_open + pr.asset_duration + pr.time_betw_get_end_and_execution_end
-        test_range = [test_range_center-1.5, test_range_center-1, test_range_center-0.5, test_range_center, test_range_center+0.5, test_range_center+1, test_range_center+1.5]
+        test_range = [test_range_center-0.5, test_range_center, test_range_center+0.5, test_range_center+1, test_range_center+1.5]
     bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, [lookback_t]))
     print('# of combinations:', len(bag_of_params))
 
@@ -523,8 +526,8 @@ if __name__ == '__main__':
 
     # Quick test compute
     if pr.test_compute_function:
-        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '11022022/1215', lookback=pr.lookback_t, seconds=15, isDebug=True)
-        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=10, k=2,
-                              test=10, ridge_param=8, isDebug=0, isInfo=True, isTrg=True, isTrading=False)
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '12022022/1215', lookback=pr.lookback_t, seconds=15, isDebug=True)
+        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=10, k=25,
+                              test=7, ridge_param=1e-7, isDebug=0, isInfo=True, isTrg=True, isTrading=False)
         print('Result:', result)
 

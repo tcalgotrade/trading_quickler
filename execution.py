@@ -56,13 +56,14 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
     if trade_start_chk:
         # Print key params for logging
         print('Started at:', datetime.datetime.now(), '\n')
-        print('Cross Val Params:')
+        print('Params:')
         print('warm_range:', pr.warm_range,'\ntrain_range:', pr.train_range,'\ndelay_range:', pr.delay_range)
-        print('ridge_range:',pr.ridge_range,'\nthreshold_test_nrmse:',pr.threshold_test_nrmse, '\n')
-        print('Trading Params:')
-        print('total_trade:', pr.total_trade,'\nlookback_t:', pr.lookback_t)
-        print('pred_delta_threshold:',pr.pred_delta_threshold)
-        print('time_to_get_quote_seconds:',pr.time_to_get_quote_seconds,'\n')
+        print('ridge_range:', pr.ridge_range)
+        print('threshold_test_nrmse:', pr.threshold_test_nrmse)
+        print('lookback_t:', pr.lookback_t)
+        print('total_trade:', pr.total_trade)
+        print('pred_delta_threshold:', pr.pred_delta_threshold)
+        print('traderecord_interval_refresh:', pr.traderecord_interval_refresh,'\n')
         setup_check = pag.confirm(text="1) BROWSER WINDOW AT HALF\n 2) AT QUOTE HISTORY?\n 3) ZOOM LEVEL CORRECT?\n 4) CURRENT SYSTEM PARAM?",
                                   title='>>> CHECKLIST <<<')
         if setup_check == 'Cancel':
@@ -136,14 +137,18 @@ def get_latest_trade_record(isPrint, approach):
             print('Last trade result:')
             print('OpenPrice:', record[0], 'ClosePrice:', record[4])
             print('OpenTime:', record[3], 'CloseTime:',record[7])
-            if record[-1] != '0.00':
+            if record[-1] != '0.00' and record[-1] != record[-2]:
                 print('Outcome: WIN!!!\n')
             elif record[-1] == '0.00':
                 print('Outcome: LOSS...\n')
-            else:
+            elif record[-1] == record[-2]:
                 print('Outcome: Refund.\n')
-            ut.tab_switch(tab=1)
-            return record[3]
+
+        # Return 1 if won.
+        won = 0
+        if record[-1] != '0.00' and record[-1] != record[-2]: won += 1
+        ut.tab_switch(tab=1)
+        return record[3], won
 
     # When pop up DOES show. Precise
     if approach == 2:
@@ -168,8 +173,13 @@ def get_latest_trade_record(isPrint, approach):
                 print('Outcome: LOSS...\n')
             if record[-1] == 'refund':
                 print('Outcome: Refund.\n')
+
+        # Return 1 if won.
+        won = 0
+        if record[-1] == 'profit': won += 1
+
         ut.tab_switch(tab=1)
-        return record[2]
+        return record[2], won
 
 
 def demo_trade():
@@ -222,7 +232,7 @@ def update_time_betw_get_end_and_execution_end(execute_time, start_get_end):
     return
 
 @te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(10))
-def trade_execution(cycle, trade):
+def trade_execution(cycle, trade, total_wins):
 
     # We cross validate for best params.
     best_param, test_range_center = an.cross_val_trading(lookback_t=pr.lookback_t)
@@ -230,7 +240,7 @@ def trade_execution(cycle, trade):
     # Check if any params are still default, if so, skip one iteration.
     if checks(trade_params=best_param, params_chk=True) == 4:
         cycle += 1
-        return 1 , cycle, trade
+        return 1 , cycle, trade, total_wins
 
     # Print params to be used.
     print('Using these params for this cycle:')
@@ -251,8 +261,8 @@ def trade_execution(cycle, trade):
     print('Dataframe Statistics:')
     print('>>> Time @ first row:', df['time'].iloc[0])
     print('>>> Time @ last row:', df['time'].iloc[-1])
-    print('Mean of quote history:', np.mean(df['quote']))
-    print('Std Dev of quote history:', np.std(df['quote']))
+    print('Mean of quote - 20 time pts:', np.mean(df['quote'].iloc[-20:]))
+    print('Std Dev of quote - 20 time pts:', np.std(df['quote'].iloc[-20:]))
 
     # Check current min/sec vs min/sec of last row of dataframe.
     time_mismatch = 0
@@ -298,10 +308,13 @@ def trade_execution(cycle, trade):
                 print('Threshold met: YES')
 
                 # Hit it!
-                executed_time = execute(signal=action) ; trade += 1
+                executed_time = execute(signal=action)
+                trade += 1
 
                 # Get trade record + update timings. 2 methods to get record.
-                trade_opened_time = get_latest_trade_record(isPrint=True, approach=2)
+                trade_opened_time, won = get_latest_trade_record(isPrint=True, approach=2)
+                total_wins += won
+
                 update_time_betw_get_end_and_execution_end(executed_time, start_get_end)
                 try:
                     update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
@@ -317,11 +330,11 @@ def trade_execution(cycle, trade):
     # Check if we have traded enough.
     if trade == pr.total_trade:
         end(cycle,trade)
-        return -1, cycle, trade
+        return -1, cycle, trade, total_wins
 
     # Go onto next cycle.
     cycle += 1
-    return 0 , cycle, trade
+    return 0 , cycle, trade, total_wins
 
 
 if __name__ == '__main__':
@@ -330,10 +343,10 @@ if __name__ == '__main__':
     # tradelog_name = "trade_execution_"+str(tradelog_datetime)+".log"
     # logging.basicConfig(filename=tradelog_name, level=logging.DEBUG) # https://www.loggly.com/?p=76609
 
-    multiprocessing.freeze_support() ; cycle = 1 ; trade = 0
+    multiprocessing.freeze_support() ; cycle = 1 ; trade = 0 ; total_wins = 0
     while True:
         print('\n/****************************************************************************/\n')
-        print('Cycle # : ', cycle) ; print('Trade executed: ', trade, '\n')
+        print('Cycle # : ', cycle) ; print(total_wins, ' wins / ', trade ,' trades  \n')
 
         # Some checks to make sure we're good before trading.
         if checks(day_change_chk=True) == 1:
@@ -350,11 +363,12 @@ if __name__ == '__main__':
                 break
 
         # We time our getting of data, do cross val do prediction and execute trade if within NRMSE
-        flow_control = trade_execution(cycle=cycle, trade=trade)
+        trade_stats = trade_execution(cycle=cycle, trade=trade, total_wins=total_wins)
 
-        if flow_control[0] == -1:
+        if trade_stats[0] == -1:
             break
-        if flow_control[0] == 1 or flow_control[0] == 0:
-            cycle = flow_control[1]
-            trade = flow_control[2]
+        if trade_stats[0] == 1 or trade_stats[0] == 0:
+            cycle = trade_stats[1]
+            trade = trade_stats[2]
+            total_wins = trade_stats[3]
 

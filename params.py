@@ -22,11 +22,11 @@ if current_system == 'rested':
         oylmp_down = (1803,763) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (280,1001)
         olymp_day = None
-    olymp_browser = (1722, 22)
+    olymp_browser = (1799, 765)
     olymp_trade_record = (323,702)
     olymp_first_trade_record = (414,703)
     click_start = (132, 1114)
-    quote_interval_pricewait = 0.75
+    quote_interval_pricewait = 1
 if current_system == 'z400':
     # Check browser at 100% zoom level
     if asset_name == 'Quickler':
@@ -78,10 +78,10 @@ if test_cross_val_specify_test_range:
     test_points = [test_range[0] - 1.5, test_range[0], test_range[0] + 1.5]
 
 if test_cross_val_trading:
-    lookback_t = 3 # Larger values of lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
-    warm_range = np.arange(15,lookback_t*60,30) ; warm_range = np.append(warm_range,-1)  # In seconds. -1 to train and test on as close to current as possible. Must be > 0
-    train_range = range(5,15) # In seconds
-    delay_range = range(11,30) # In seconds
+    lookback_t =  5# Larger values of lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
+    warm_range = np.arange(45,lookback_t*60,45) ; warm_range = np.append(warm_range,-1)  # In seconds. -1 to train and test on as close to current as possible. Must be > 0
+    train_range = range(5,10) # In seconds
+    delay_range = range(25,35) # In seconds
     ridge_range = np.linspace(0,3e-7,5)
     threshold_test_nrmse = [1] # Set to 1 to allow all to show up
 else:
