@@ -138,7 +138,7 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
         print(traceback.format_exc())
         return
 
-# @jit(nopython=False)
+
 def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
                  warmup, train, k, test, ridge_param,
                  isDebug=False, isInfo=False, isTrg=False, isTrading=False):
