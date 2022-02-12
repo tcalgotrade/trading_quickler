@@ -49,7 +49,7 @@ if current_system == 'z400':
     olymp_trade_record = (485,357)
     olymp_first_trade_record = (120,458)
     click_start = (73, 722)
-    quote_interval_pricewait = 1.5
+    quote_interval_pricewait = 2
 
 # Data file location
 data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
