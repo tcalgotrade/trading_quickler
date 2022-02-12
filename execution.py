@@ -200,7 +200,6 @@ def trade_small():
 
 
 def update_time_betw_execution_end_and_trade_open(execute_time, trade_open_time):
-    print('>>> Time @ trade execution:',execute_time)
     if len(trade_open_time) == 8:
         trade_open_time_formatted = datetime.datetime.strptime(trade_open_time, '%H:%M:%S')
     elif len(trade_open_time) == 12:
@@ -211,7 +210,7 @@ def update_time_betw_execution_end_and_trade_open(execute_time, trade_open_time)
     diff = trade_open_time_formatted - execute_time
 
     # Sanity Check
-    if diff.total_seconds() < 0 or diff.total_seconds() > 2:
+    if diff.total_seconds() < 0 or diff.total_seconds() > 3:
         new_time = 1.5
     else:
         new_time = diff.total_seconds()
@@ -219,28 +218,27 @@ def update_time_betw_execution_end_and_trade_open(execute_time, trade_open_time)
     if len(trade_open_time) == 8:
         # If we are missing decimals, we add a bit of margin.
         pr.change_time_onthefly(time_et=new_time+0.5)
-        print('*** Updated time_betw_execution_end_and_trade_open to:', diff.total_seconds() + 0.5, '\n')
+        print('*** Updated time_betw_execution_end_and_trade_open to:', new_time, '\n')
     elif len(trade_open_time) == 12:
         pr.change_time_onthefly(time_et=new_time)
-        print('*** Updated time_betw_execution_end_and_trade_open to:', diff.total_seconds(), '\n')
+        print('*** Updated time_betw_execution_end_and_trade_open to:', new_time, '\n')
     else:
         raise Exception
     return
 
 
 def update_time_betw_get_end_and_execution_end(execute_time, start_get_end):
-    print('>>> Time @ trade execution:',execute_time)
-
     # Calc difference between. We should expect trade_open_time to be later.
     start_get_end = datetime.datetime.strptime(start_get_end, '%H:%M:%S.%f')
     diff = execute_time - start_get_end
 
     # Sanity check
     if diff.total_seconds() < 0 or diff.total_seconds() > 1:
-        pr.change_time_onthefly(time_ge=0.5)
+        new_time = 0.5
     else:
-        pr.change_time_onthefly(time_ge=diff.total_seconds())
-    print('*** Updated time_betw_get_end_and_execution_end to:', diff.total_seconds(), '\n')
+        new_time = diff.total_seconds()
+    pr.change_time_onthefly(time_ge=new_time)
+    print('*** Updated time_betw_get_end_and_execution_end to:', new_time, '\n')
     return
 
 @te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(10))
