@@ -246,7 +246,7 @@ def trade_execution(cycle, trade):
     start_get_end = datetime.datetime.now().strftime('%H:%M:%S.%f')
 
     # Load dataframe
-    df = an.load(picklename=picklename, lookback=pr.lookback_t_min ,seconds=get_one_second)
+    df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = an.lock_and_load(picklename=picklename, lookback=pr.lookback_t_min, seconds=get_one_second)
     print('Loaded pickle used for prediction for trading ... :', picklename)
     print('Dataframe Statistics:')
     print('>>> Time @ first row:', df['time'].iloc[0])
@@ -263,39 +263,34 @@ def trade_execution(cycle, trade):
     # Returns a tuple when trading : (action to take: 1:buy up,0:buy down,-1:do nth, pred_delta)
     results = []
     for p in best_param:
-        results.append(an.compute_ngrc(df, warmup=-1, train=p[0], k=p[1], test=p[4],
-                            ridge_param=p[5], isTrg=0, isTrading=1))
+        results.append(
+            an.compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=p[0], k=p[1],
+                            test=p[4], ridge_param=p[5], isTrg=False, isTrading=True))
     print('*** test_range_center used for trade prediction:', test_range_center)
 
-    # Consolidate results for trade execution.
-    test_predictions_quote_delta = []
+    action = 0
     for result in results:
-        test_predictions_quote_delta.append(round(result[2],3))
-
-    action_sum = 0
-    for result in results:
-        action_sum += result[0]
-    if action_sum == len(results):
-        action_sum = 1
+        if result > 0:
+            action += 1
 
     # Calc basic stats of delta of price prediction.
-    mean_pred_delta = np.mean(test_predictions_quote_delta)
-    stdev_pred_delta = np.std(test_predictions_quote_delta)
-    print('All results pred delta:', test_predictions_quote_delta)
+    mean_pred_delta = np.mean(results)
+    stdev_pred_delta = np.std(results)
+    print('All results pred delta:', results)
     print('Average of all results pred delta:', mean_pred_delta)
     print('Std Dev of all results pred delta:', stdev_pred_delta, '\n')
 
     # Force a trade for testing purposes.
     if pr.test_force_trade:
         time_mismatch = 0
-        action_sum = 0
+        action = 0
         mean_pred_delta = 999
 
     # Trade Execution
     if time_mismatch != 1:
         print('Time Mismatch: NO')
 
-        if action_sum == 0 or action_sum == 1:
+        if action == 0 or action == len(results):
             print('Direction agreement: YES ')
 
             # Check if mean of delta is above threshold.
@@ -303,7 +298,7 @@ def trade_execution(cycle, trade):
                 print('Threshold met: YES')
 
                 # Hit it!
-                executed_time = execute(signal=action_sum) ; trade += 1
+                executed_time = execute(signal=action) ; trade += 1
 
                 # Get trade record + update timings. 2 methods to get record.
                 trade_opened_time = get_latest_trade_record(isPrint=True, approach=2)
@@ -316,7 +311,7 @@ def trade_execution(cycle, trade):
 
     # Output why we did not take action.
     if time_mismatch == 1: print('No execution - Time Mismatch: YES')
-    if 0 < action_sum < len(results) or action_sum < 0: print('No execution - Direction agreement: NO')
+    if 0 < action < len(results): print('No execution - Direction agreement: NO')
     if abs(mean_pred_delta) < pr.pred_delta_threshold: print('No execution - Threshold met: NO')
 
     # Check if we have traded enough.

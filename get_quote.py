@@ -35,7 +35,7 @@ def olymptrade_time_and_quote(hour_front, hour_back, min_front, min_back,
     pag.typewrite([min_front])
     pag.typewrite([min_back], interval=interval_price_wait)
 
-    # Instead of dragging, we click, select all and leave it to load func to clean up.
+    # Instead of dragging, we click, select all and leave it to lock_and_load func to clean up.
     pag.click(x=pr.click_start[0], y=pr.click_start[1])
     pag.hotkey('ctrl', 'a')
     pag.hotkey('ctrl', 'c')
