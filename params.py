@@ -84,16 +84,16 @@ if test_cross_val_trading:
     threshold_test_nrmse = [1] # Set to 1 to allow all to show up
 else:
     lookback_t = 5  # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
-    warm_range = np.arange(1,(lookback_t-1)*60,40) ; warm_range = np.append(warm_range,-1) # In seconds. -1 to train and test on as close to current as possible. Must be > 0
+    warm_range = np.arange(1,(lookback_t-1)*60,30) ; warm_range = np.append(warm_range,-1) # In seconds. -1 to train and test on as close to current as possible. Must be > 0
     train_range = range(5,10) # In seconds
     delay_range = range(25,30) # In seconds
-    ridge_range = [1e-7]
-    threshold_test_nrmse = [1] # Set to 1 to allow all to show up
+    ridge_range = np.linspace(0,1e-8,5)
+    threshold_test_nrmse = [0.1] # Set to 1 to allow all to show up
 
 # Trade Execution Params
 lookback_t_min = 2 # Only read by compute() when predicting for trade.
 total_trade = 100
-pred_delta_threshold = 0.001
+pred_delta_threshold = 0.75
 time_to_get_quote_seconds = 2.1
 interval_typew = 0
 quote_interval_pricewait = 0.75
@@ -101,11 +101,10 @@ traderecord_interval_refresh = 3
 
 # Params for how far ahead to predict
 time_betw_execution_end_and_trade_open = 1.5 # Updated after every trade.
-time_betw_get_end_and_execution_end = 0.47 # Hardcoded. 0.6 for z400. 0.47 for rested.
+time_betw_get_end_and_execution_end = 0.5 # Hardcoded. 0.6 for z400. 0.47 for rested.
 # Function to change global timings.
 def change_time_onthefly(time_ge=None, time_et=None): # https://is.gd/HqFpNJ
     global time_betw_execution_end_and_trade_open
     global time_betw_get_end_and_execution_end
     if time_ge is not None: time_betw_get_end_and_execution_end = time_ge
     if time_et is not None: time_betw_execution_end_and_trade_open = time_et
-
