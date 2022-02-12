@@ -100,6 +100,8 @@ time_to_get_quote_seconds = 2.1
 interval_typew = 0
 traderecord_interval_refresh = 3
 random_sleep = False
+random_sleep_min = 1
+random_sleep_max = 10
 
 # Params for how far ahead to predict
 time_betw_execution_end_and_trade_open = 1.5 # Updated after every trade.

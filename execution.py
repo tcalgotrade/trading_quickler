@@ -322,7 +322,7 @@ def trade_execution(cycle, trade, total_wins):
 
                 # Sleep for a random period of time.
                 if pr.random_sleep:
-                    sleeptime = np.random.uniform(60, 60*15)
+                    sleeptime = np.random.uniform(60*pr.random_sleep_min, 60*pr.random_sleep_max)
                     print("Just put in a trade. Sleeping for:", sleeptime, "seconds")
                     time.sleep(sleeptime)
 
