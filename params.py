@@ -11,7 +11,7 @@ if current_system == 'rested':
         olymp_up = (1812,580) # Half: (1812,580) Maximized: (3692, 580)
         oylmp_down = (1812,659) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (187,887)
-        olymp_day = None
+        olymp_day = (166,1163)
         olymp_account_switch = (1610,165)
         olymp_demo_account = (1502,267)
         olymp_usd_account = (1502,396)
@@ -74,8 +74,7 @@ if test_cross_val_past:
     test_hour = '16' ; test_minute = '20' ; test_second = '15'
 
 if test_cross_val_specify_test_range:
-    test_range = [7,7.5,8,8.5,9,9.5,10]  # In seconds.
-    test_points = [test_range[0] - 1.5, test_range[0], test_range[0] + 1.5]
+    test_range = [5.5,6,6.5,7,7.5,8]  # In seconds.
 
 if test_cross_val_trading:
     lookback_t =  5 # Larger values of lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
