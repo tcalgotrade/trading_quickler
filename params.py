@@ -84,10 +84,10 @@ if test_cross_val_trading:
     ridge_range = np.linspace(1e-8,1e-7,2)
     threshold_test_nrmse = [1] # Set to 1 to allow all to show up
 else:
-    lookback_t = 4  # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
-    warm_range = np.arange(45,(lookback_t-1)*60,45) ; warm_range = np.append(warm_range,-1) # In seconds. -1 to train and test on as close to current as possible. Must be > 0
-    train_range = [7] # In seconds
-    delay_range = range(25,30) # In seconds
+    lookback_t = 5  # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
+    warm_range = np.arange(20,(lookback_t-2)*60,30) ; warm_range = np.append(warm_range,-1) # In seconds. -1 to train and test on as close to current as possible. Must be > 0
+    train_range = [21] # In seconds
+    delay_range = [7,8] # In seconds
     ridge_range = [1e-8]
     threshold_test_nrmse = [0.1] # Set to 1 to allow all to show up
 

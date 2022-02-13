@@ -295,6 +295,8 @@ def trade_execution(cycle, trade, total_wins):
     for result in results:
         if result > 0:
             action += 1
+        if result < 0:
+            action += -1
 
     # Calc basic stats of delta of price prediction.
     mean_pred_delta = np.mean(results)
@@ -313,7 +315,7 @@ def trade_execution(cycle, trade, total_wins):
     if time_mismatch != 1:
         print('Time Mismatch: NO')
 
-        if action == 0 or action == len(results):
+        if action == len(results) or action == -len(results):
             print('Direction agreement: YES ')
 
             # Check if mean of delta is above threshold.
@@ -321,7 +323,10 @@ def trade_execution(cycle, trade, total_wins):
                 print('Threshold met: YES')
 
                 # Hit it!
-                executed_time = execute(signal=action)
+                if action == len(results):
+                    executed_time = execute(signal=1)
+                if action == -len(results):
+                    executed_time = execute(signal=0)
                 trade += 1
 
                 # Get trade record + update timings. 2 methods to get record.
