@@ -370,7 +370,7 @@ def trade_execution(cycle, trade, total_wins):
     start_get_end = datetime.datetime.now()
 
     # Load dataframe
-    df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = an.lock_and_load(picklename=picklename, lookback=pr.lookback_t_min, seconds=get_one_second)
+    df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = an.lock_and_load(picklename=picklename, lookback=pr.lookback_t, seconds=get_one_second)
     print('Loaded pickle used for prediction for trading ... :', picklename)
     print('Dataframe Statistics:')
     print('>>> Time @ first row:', df['time'].iloc[0])
@@ -387,14 +387,13 @@ def trade_execution(cycle, trade, total_wins):
     # Returns a list of test_predictions_quote delta when trading.
     # ^ between last data and test_range_center + 1 second.
     results = []
-    for d in pr.delay_range:
+    for d in [3,4,7,8]:
         for t in pr.train_range:
             results.append(
                 an.compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
                                 warmup=-1, train=t, k=d, test=pr.test_time,
                                 ridge_param=pr.ridge_range[0], isTrg=False, isTrading=True))
 
-    action = None
     action_count = 0
     mean_delta = 0
     for result in results:
@@ -412,8 +411,14 @@ def trade_execution(cycle, trade, total_wins):
     #     action = 1
     # if action_count == 0 and mean_delta < 0:
     #     action = 0
-    action = np.random.randint(0,2)
+    random_action = np.random.randint(0,2)
     action_fraction = action_count / (len(results)*len(results[0]))
+
+    action = random_action
+    # svc_action = mse.svc_trading(consolidated_array, random_action, action_fraction, mean_delta, pr.delay_range)
+    # print('svc action vs random_action:', svc_action, random_action)
+    # if svc_action == random_action:
+    #     action = svc_action
 
     # Trade Execution
     direction_agree = 0
@@ -447,7 +452,7 @@ def trade_execution(cycle, trade, total_wins):
                     trade_opened_time, won = get_latest_trade_record(isPrint=True, approach=1)
                 total_wins += won
                 trade_outcome = won
-                mse.data_collection(consolidated_array, time_betw_get_and_exec, action, action_fraction, mean_delta, pr.test_time, pr.delay_range, trade_outcome)
+                mse.data_collection(consolidated_array, time_betw_get_and_exec, action, action_fraction, mean_delta, pr.test_time, np.arange(1,300,5), trade_outcome)
                 gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
 
 
