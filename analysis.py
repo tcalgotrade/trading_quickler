@@ -72,9 +72,20 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
 
         # Separate odd and even rows, https://is.gd/w91SzO
         # Not actually used. Left here for future ref.
-        time = df.iloc[:-1:2]
-        closing_price = df.iloc[1::2]
+        time = df.iloc[:-1:2] ; closing_price = df.iloc[1::2]
 
+        """
+        Sample:
+        00:00:00.499
+        5269.92
+        00:00:01.004
+        5269.99
+        00:00:01.561
+        5269.76
+        00:00:02.065
+        5269.17
+        ...
+        """
         # Split raw into 2 col, odd rows containing time stamp is col 1, even rows containing close price is col 2
         df = df[:-1:2].assign(quote=df[1::2].values)  # https://is.gd/zH0lPW
 
@@ -89,11 +100,8 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
         # Convert quote to float
         df['quote'] = pd.to_numeric(df['quote'])
 
-        # Compute diff between last & current quote
-        df['quote_diff'] = df['quote'].diff()
-
         # Rearrange cols for tidiness, https://is.gd/QNzlbu
-        df = df[['time', 'time_diff', 'quote', 'quote_diff']]
+        df = df[['time', 'time_diff', 'quote']]
 
         # Drop of 1st row (oldest data point) as it contains NaN
         df = df.iloc[1:, :]
@@ -521,12 +529,13 @@ if __name__ == '__main__':
 
     # Quick test lock_and_load.
     if pr.test_load_function:
-        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '11022022/1058', lookback=pr.lookback_t, seconds=15, isDebug=True)
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '14022022/1100', lookback=pr.lookback_t, seconds=15, isDebug=True)
+        print('Inverse FFT of quote:', np.fft.irfft(consolidated_array, n=10))
 
     # Quick test compute
     if pr.test_compute_function:
-        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '13022022/1348', lookback=pr.lookback_t, seconds=15, isDebug=True)
-        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=21, k=2,
-                              test=7, ridge_param=1e-8, isDebug=False, isInfo=True, isTrg=True, isTrading=False)
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '14022022/1100', lookback=pr.lookback_t, seconds=15, isDebug=True)
+        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=100, k=60,
+                              test=10, ridge_param=1e-8, isDebug=False, isInfo=True, isTrg=True, isTrading=False)
         print('Result:', result)
 

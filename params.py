@@ -11,7 +11,7 @@ if current_system == 'rested':
         olymp_up = (1812,580) # Half: (1812,580) Maximized: (3692, 580)
         oylmp_down = (1812,659) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (187,887)
-        olymp_day = (166,1163)
+        olymp_day = None
         olymp_account_switch = (1610,165)
         olymp_demo_account = (1502,267)
         olymp_usd_account = (1502,396)

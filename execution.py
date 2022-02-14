@@ -9,6 +9,7 @@ import multiprocessing
 import params as pr
 import utility as ut
 import tenacity as te
+import mlp_svc_explore as mse
 import logging
 
 pag.FAILSAFE = True
@@ -117,9 +118,9 @@ def get_latest_trade_record(isPrint, approach):
 
     # Click different depending on method.
     if approach == 1:
-        pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1], interval=0.2)
+        pag.click(x=pr.olymp_trade_record[0], y=pr.olymp_trade_record[1], interval=1)
     if approach == 2:
-        pag.click(x=pr.olymp_first_trade_record[0], y=pr.olymp_first_trade_record[1], interval=0.2)
+        pag.click(x=pr.olymp_first_trade_record[0], y=pr.olymp_first_trade_record[1], interval=1)
 
     pag.hotkey('ctrl', 'a', interval=0.1)
     pag.hotkey('ctrl', 'c', interval=0.1)
@@ -386,11 +387,11 @@ def trade_execution(cycle, trade, total_wins):
     # Returns a list of test_predictions_quote delta when trading.
     # ^ between last data and test_range_center + 1 second.
     results = []
-    for d in np.arange(3,60,7):
-        for t in [10]:
+    for d in pr.delay_range:
+        for t in pr.train_range:
             results.append(
-                an.compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=t, k=d,
-                                test=(pr.asset_duration*2.5),
+                an.compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
+                                warmup=-1, train=t, k=d, test=pr.test_time,
                                 ridge_param=pr.ridge_range[0], isTrg=False, isTrading=True))
 
     action = None
@@ -407,14 +408,12 @@ def trade_execution(cycle, trade, total_wins):
     print('Mean of predicted delta:', mean_delta)
     print('')
 
-    if action_count == len(results)*len(results[0]) and mean_delta > 0:
-        action = 1
-    if action_count == 0 and mean_delta < 0:
-        action = 0
-
-    end_compute = datetime.datetime.now()
-    print('Compute took :', end_compute - start_get_end)
-    print('')
+    # if action_count == len(results)*len(results[0]) and mean_delta > 0:
+    #     action = 1
+    # if action_count == 0 and mean_delta < 0:
+    #     action = 0
+    action = np.random.randint(0,2)
+    action_fraction = action_count / (len(results)*len(results[0]))
 
     # Trade Execution
     direction_agree = 0
@@ -435,13 +434,22 @@ def trade_execution(cycle, trade, total_wins):
                     execute(signal=0)
                 trade += 1
 
+                end_execution = datetime.datetime.now()
+                diff = end_execution - start_get_end
+                time_betw_get_and_exec = diff.total_seconds()
+                print('>>> Time elapsed betw get_one end & execution end:', time_betw_get_and_exec)
+                print('')
+
                 # Get trade record + update timings. 2 methods to get record.
                 # Check if what we got is legit, if not, try another approach.
                 trade_opened_time, won = get_latest_trade_record(isPrint=True, approach=2)
                 if len(trade_opened_time) != 12 and ':' not in trade_opened_time:
                     trade_opened_time, won = get_latest_trade_record(isPrint=True, approach=1)
-                gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
                 total_wins += won
+                trade_outcome = won
+                mse.data_collection(consolidated_array, time_betw_get_and_exec, action, action_fraction, mean_delta, pr.test_time, pr.delay_range, trade_outcome)
+                gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
+
 
     # Output why we did not take action.
     if time_mismatch == 1:
@@ -452,7 +460,7 @@ def trade_execution(cycle, trade, total_wins):
         print('No execution - pred_delta_threshold met?: NO')
 
     # Check if we have traded enough.
-    if trade == pr.total_trade or total_wins > 0.6 * trade:
+    if trade == pr.total_trade or total_wins > 1 * trade:
         end(cycle,trade, total_wins)
         return -1, cycle, trade, total_wins
 
