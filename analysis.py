@@ -165,15 +165,15 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
     # maxtime_pts - # Number of dt sum of warm and train+tes if trg, less test if trading
     traintime_pts = np.int64(np.round(traintime / dt))
     testtime_pts = np.int64(np.round(testtime / dt))
+    warmup_pts = np.round(warmuptime / dt)
     if isTrg:
         if traintime_pts < np.int64(0) or testtime_pts < np.int64(0):
             print('Invalid train & test time points :', traintime_pts, testtime_pts, dt)
             return
-        if warmuptime > np.float64(0): warmup_pts = np.round(warmuptime / dt)
-        if warmuptime == np.float64(-1): warmup_pts = rows_in_df - (traintime_pts+testtime_pts)
+        if warmuptime == np.float64(-1) or warmuptime < np.float64(-1):
+            warmup_pts = rows_in_df - (traintime_pts+testtime_pts)
         if warmuptime < np.float64(-1):
             print('Invalid warmuptime seconds while trg', warmuptime)
-            warmup_pts = rows_in_df - (traintime_pts+testtime_pts)
         warmup_pts = np.int64(warmup_pts)
         warmtrain_pts = warmup_pts + traintime_pts
         maxtime_pts = np.int64(warmtrain_pts + testtime_pts)
@@ -183,13 +183,12 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
         if traintime_pts < np.int64(0) or testtime_pts < np.int64(0):
             print('Invalid train & test time points :', traintime_pts, testtime_pts, dt)
             return
-        if warmuptime > np.float64(0): warmup_pts = np.round(warmuptime / dt)
-        if warmuptime == np.float64(-1): warmup_pts = rows_in_df - (traintime_pts)
+        if warmuptime == np.float64(-1) or warmuptime < np.float64(-1):
+            warmup_pts = rows_in_df - (traintime_pts)
         if warmuptime < np.float64(-1):
             print('Invalid warmuptime seconds while trg', warmuptime)
-            warmup_pts = rows_in_df - (traintime_pts)
         warmup_pts = np.int64(warmup_pts)
-        warmtrain_pts = np.int64(warmup_pts) + traintime_pts
+        warmtrain_pts = warmup_pts + traintime_pts
         maxtime_pts = np.int64(warmtrain_pts)
 
     if maxtime_pts > rows_in_df: print('Not enough data for desired maxtime_pts vs rows', maxtime_pts, rows_in_df) ; return
@@ -292,14 +291,14 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
 
     # create a place to store feature vectors for prediction
     out_test = np.zeros(dtot, dtype=np.float64)  # full feature vector
-    x_test = np.zeros((dlin, testtime_pts), dtype=np.float64)  # linear part
+    x_test = np.zeros((dlin, testtime_pts+1), dtype=np.float64)  # linear part
 
     try:
         # copy over initial linear feature vector
         x_test[:, 0] = x[:, warmtrain_pts - 1]
 
         # do prediction
-        for j in np.arange(testtime_pts - 1):
+        for j in np.arange(testtime_pts):
             # copy linear part into whole feature vector
             out_test[1:dlin + 1] = x_test[:, j]  # shift by one for constant
             # fill in the non-linear part
@@ -333,16 +332,18 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
         # When cross val: we're interested in test predictions instead of trg predictions.
         # When trading, we're just looking at the test predictions, i.e. predicting ahead to future and output actions to take.
         if isTrg:
-            ground_truth = x[0:d, warmtrain_pts - 1:warmtrain_pts + testtime_pts - 1]
-            test_predictions = x_test[0:d, 0:testtime_pts]
-            # We compute price diff between then and now
-            ground_truth_quote_delta = ground_truth[0, -1] - ground_truth[0, 0]
-            test_predictions_quote_delta = test_predictions[0, -1] - test_predictions[0, 0]
-            # We sum up price diffs to find out whether we will be up or down at desired test time.
+            ground_truth = x[0:d, warmtrain_pts - 1:warmtrain_pts + testtime_pts]
+            test_predictions = x_test[0:d, 0:]
+            # We compute between end of last quote in data with every time point ahead.
+            # i - (i+1) , i - (i+2), i - (i+3) ...
+            ground_truth_quote_delta = np.cumsum(np.diff(ground_truth))
+            test_predictions_quote_delta = np.cumsum(np.diff(test_predictions))
+
         if isTrading:
-            test_predictions = x_test[0:d, 0:testtime_pts]
-            # We compute price diff between then and now
-            test_predictions_quote_delta = test_predictions[0, -1] - test_predictions[0, 0]
+            test_predictions = x_test[0:d, 0:]
+            # We compute between end of last quote in data with every time point ahead.
+            # i - (i+1) , i - (i+2), i - (i+3) ...
+            test_predictions_quote_delta = np.cumsum(np.diff(test_predictions))
 
         if isDebug:
             print('warm:', warmup)
@@ -483,7 +484,7 @@ def cross_val_trading(lookback_t):
         test_range_center = np.mean(test_range)
     else:
         test_range_center = pr.time_betw_execution_end_and_trade_open + pr.asset_duration + pr.time_betw_get_end_and_execution_end
-        test_range = [test_range_center-0.5, test_range_center, test_range_center+0.5, test_range_center+1]
+        test_range = [test_range_center+pr.asset_duration]
     bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, [lookback_t]))
     print('# of combinations:', len(bag_of_params))
 
@@ -524,8 +525,8 @@ if __name__ == '__main__':
 
     # Quick test compute
     if pr.test_compute_function:
-        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '12022022/2030', lookback=pr.lookback_t, seconds=15, isDebug=True)
-        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=8, k=25,
-                              test=7, ridge_param=1e-8, isDebug=0, isInfo=True, isTrg=True, isTrading=False)
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '13022022/1348', lookback=pr.lookback_t, seconds=15, isDebug=True)
+        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=21, k=2,
+                              test=7, ridge_param=1e-8, isDebug=False, isInfo=True, isTrg=True, isTrading=False)
         print('Result:', result)
 

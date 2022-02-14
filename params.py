@@ -26,7 +26,7 @@ if current_system == 'rested':
     olymp_trade_record = (323,702)
     olymp_first_trade_record = (414,703)
     click_start = (132, 1114)
-    quote_interval_pricewait = 1
+    quote_interval_pricewait = 0.75
 if current_system == 'z400':
     # Check browser at 100% zoom level
     if asset_name == 'Quickler':
