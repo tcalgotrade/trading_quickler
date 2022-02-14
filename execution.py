@@ -453,7 +453,7 @@ def trade_execution(cycle, trade, total_wins):
 
     # Check if we have traded enough.
     if trade == pr.total_trade or total_wins > 0.6 * trade:
-        end(cycle,trade, total_wins)`
+        end(cycle,trade, total_wins)
         return -1, cycle, trade, total_wins
 
     print('')
