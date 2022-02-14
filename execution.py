@@ -387,7 +387,7 @@ def trade_execution(cycle, trade, total_wins):
     # Returns a list of test_predictions_quote delta when trading.
     # ^ between last data and test_range_center + 1 second.
     results = []
-    for d in [3,4,7,8]:
+    for d in pr.delay_range:
         for t in pr.train_range:
             results.append(
                 an.compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
