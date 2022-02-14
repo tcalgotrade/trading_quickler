@@ -94,7 +94,7 @@ else:
 
 # Trade Execution Params
 lookback_t_min = 3 # Only read by compute() when predicting for trade.
-total_trade = 100
+total_trade = 9999
 pred_delta_threshold = 0
 time_to_get_quote_seconds = 2.1
 interval_typew = 0
