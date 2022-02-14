@@ -26,7 +26,7 @@ if current_system == 'rested':
     olymp_trade_record = (323,702)
     olymp_first_trade_record = (414,703)
     click_start = (132, 1114)
-    quote_interval_pricewait = 0.75
+    quote_interval_pricewait = 1
 if current_system == 'z400':
     # Check browser at 100% zoom level
     if asset_name == 'Quickler':
@@ -84,20 +84,21 @@ if test_cross_val_trading:
     ridge_range = np.linspace(1e-8,1e-7,2)
     threshold_test_nrmse = [1] # Set to 1 to allow all to show up
 else:
-    lookback_t = 5  # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
-    warm_range = np.arange(20,(lookback_t-2)*60,30) ; warm_range = np.append(warm_range,-1) # In seconds. -1 to train and test on as close to current as possible. Must be > 0
+    lookback_t = 6  # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
+    warm_range = [] ; warm_range = np.append(warm_range,-1) # In seconds. -1 to train and test on as close to current as possible. Must be > 0
     train_range = [21] # In seconds
-    delay_range = [7,8] # In seconds
-    ridge_range = [1e-8]
-    threshold_test_nrmse = [0.1] # Set to 1 to allow all to show up
+    delay_range = [3,4,7,8] # In seconds
+    ridge_range = [0]
+    test_time = asset_duration+2
+    threshold_test_nrmse = [1] # Set to 1 to allow all to show up
 
 # Trade Execution Params
-lookback_t_min = 2 # Only read by compute() when predicting for trade.
-total_trade = 5
-pred_delta_threshold = 1
+lookback_t_min = 3 # Only read by compute() when predicting for trade.
+total_trade = 100
+pred_delta_threshold = 0
 time_to_get_quote_seconds = 2.1
 interval_typew = 0
-traderecord_interval_refresh = 3
+traderecord_interval_refresh = 5
 random_sleep = False
 random_sleep_min = 1
 random_sleep_max = 15
