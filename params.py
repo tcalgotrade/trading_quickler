@@ -88,7 +88,7 @@ else:
     warm_range = [] ; warm_range = np.append(warm_range,-1) # In seconds. -1 to train and test on as close to current as possible. Must be > 0
     train_range = [21] # In seconds
     delay_range = [3,4,7,8] # In seconds
-    ridge_range = [0]
+    ridge_range = [1e-8]
     test_time = asset_duration+2
     threshold_test_nrmse = [1] # Set to 1 to allow all to show up
 
