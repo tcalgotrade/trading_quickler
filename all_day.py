@@ -30,6 +30,8 @@ if __name__ == '__main__':
                 time.sleep((pr.lookback_t_min+1)*60)
                 if pr.olymp_day is not None or pr.olymp_day != ():
                     ut.date_changer()
+                else:
+                    break
             time.sleep(59-datetime.datetime.now().second)
             gq.build_dataset_last_t_minutes(t=pr.lookback_t_min, include_current=False)
 
