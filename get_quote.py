@@ -226,9 +226,11 @@ def build_dataset_last_t_minutes(t=1, include_current=True):
         if now.hour - 1 < 0 and now.minute - 1 < 0:
             current_hour = 23
             current_minute = 59
-        if now.minute - 1 < 0:
+        if now.hour - 1 >= 0 and now.minute - 1 < 0:
             current_hour = now.hour - 1
             current_minute = 59
+        if now.minute - 1 >= 0:
+            current_minute = now.minute - 1
 
     hours , minutes = ut.hour_min_to_list_t(current_hour, current_minute, current_sec, t=t)
     get_some(hours_list=hours, minutes_list=minutes)
