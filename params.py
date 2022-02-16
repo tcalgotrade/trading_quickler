@@ -1,6 +1,6 @@
 import numpy as np
 
-current_system = 'rested'
+current_system = 'z400'
 asset_name = "Quickler"
 asset_duration = 5 # in seconds
 
@@ -30,10 +30,10 @@ if current_system == 'rested':
 if current_system == 'z400':
     # Check browser at 100% zoom level
     if asset_name == 'Quickler':
-        olymp_hr = (86,633)
-        olymp_up = (888,340) # Half: (1812,580) Maximized: (3692, 580)
-        oylmp_down = (888,389) # Half: (1812,659) Maximized: (3692, 659)
-        olymp_date = (171,572)
+        olymp_hr = (143,963)
+        olymp_up = (1812,578) # Half: (1812,580) Maximized: (3692, 580)
+        oylmp_down = (1816,660) # Half: (1812,659) Maximized: (3692, 659)
+        olymp_date = (277,866)
         olymp_day = None
         olymp_account_switch = None
         olymp_demo_account = None
@@ -45,18 +45,18 @@ if current_system == 'z400':
         oylmp_down = () # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = ()
         olymp_day = None
-    olymp_browser = (521, 614)
-    olymp_trade_record = (485,357)
-    olymp_first_trade_record = (120,458)
-    click_start = (73, 722)
-    quote_interval_pricewait = 2
+    olymp_browser = (205,100)
+    olymp_trade_record = (937,400)
+    olymp_first_trade_record = (434,549)
+    click_start = (140,1027)
+    quote_interval_pricewait = 1
 
 # Data file location
 data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
 
 # Print coordinate of mouse position
 find_pos = False
-position_roll_call = False
+position_roll_call = True
 
 # Testing for get_quote
 test_get_one = False
