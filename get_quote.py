@@ -204,7 +204,7 @@ def get_some(hours_list, minutes_list):
     return
 
 
-def build_dataset_last_t_minutes(t=1):
+def build_dataset_last_t_minutes(t=1, include_current=True):
     """
     Input
     t: Expects an integer to represent minutes.
@@ -216,12 +216,20 @@ def build_dataset_last_t_minutes(t=1):
     # Get time
     start_time = now = datetime.datetime.now()
     # To use cross_val_trading to look back at a particular minute and lookback_t before it.
-    current_hour = now.hour ; current_min = now.minute ; current_sec = now.second
+    current_hour = now.hour ; current_minute = now.minute ; current_sec = now.second
 
     if pr.test_cross_val_trading and pr.test_cross_val_past:
-        current_hour = int(pr.test_hour); current_min = int(pr.test_minute); current_sec = int(pr.test_second)
+        current_hour = int(pr.test_hour); current_minute = int(pr.test_minute); current_sec = int(pr.test_second)
 
-    hours , minutes = ut.hour_min_to_list_t(current_hour, current_min, current_sec, t=t)
+    if not include_current:
+        if now.hour - 1 < 0:
+            current_hour = 23
+        if now.minute - 1 < 0:
+            current_minute = 59
+        else:
+            current_minute = now.minute - 1
+
+    hours , minutes = ut.hour_min_to_list_t(current_hour, current_minute, current_sec, t=t)
     get_some(hours_list=hours, minutes_list=minutes)
 
     print('Built dataset for lookback_t:', t , 'minutes behind this time :', now.hour , now.minute)
@@ -236,6 +244,5 @@ if __name__ == '__main__':
     if pr.test_get_some:
         get_some(hours_list=[20,21], minutes_list=[[58,59],[0,1,2]])
     if pr.test_build_dataset_last_t:
-        build_dataset_last_t_minutes(t=3)
-        print('Time now is:', datetime.datetime.now())
+        build_dataset_last_t_minutes(t=60)
 

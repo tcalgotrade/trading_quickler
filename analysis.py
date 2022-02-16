@@ -510,7 +510,7 @@ def cross_val_trading(lookback_t):
         test_range_center = np.mean(test_range)
     else:
         test_range_center = pr.time_betw_execution_end_and_trade_open + pr.asset_duration + pr.time_betw_get_end_and_execution_end
-        test_range = [test_range_center+pr.asset_duration]
+        test_range = [test_range_center+0.5]
     bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, [lookback_t]))
     print('# of combinations:', len(bag_of_params))
 

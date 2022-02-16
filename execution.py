@@ -423,6 +423,7 @@ def trade_execution(cycle, trade, total_wins):
         for item in result:
             if item > 0:
                 action_count += 1
+    # action_fraction = action_count / (len(results)*len(results[0]))
 
     mean_delta = mean_delta / len(results)
     print('Action:', action_count, 'Total: ', len(results)*len(results[0]))
@@ -434,7 +435,6 @@ def trade_execution(cycle, trade, total_wins):
     # if action_count == 0 and mean_delta < 0:
     #     action = 0
     # random_action = np.random.randint(0,2)
-    # action_fraction = action_count / (len(results)*len(results[0]))
 
     action = None
     # action = random_action
@@ -530,7 +530,6 @@ if __name__ == '__main__':
         if cycle == 1:
             if checks(cycle, trade_start_chk=True) == 2:
                 break
-            gq.build_dataset_last_t_minutes(t=pr.lookback_t)
 
         # We time our getting of data, do cross val do prediction and execute trade if within NRMSE
         trade_stats = trade_execution(cycle=cycle, trade=trade, total_wins=total_wins)
