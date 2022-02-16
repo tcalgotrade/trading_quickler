@@ -360,14 +360,29 @@ def update_time_betw_get_end_and_execution_end(execute_time, start_get_end):
 #     return 0 , cycle, trade, total_wins
 
 
-@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(10))
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(0))
 def trade_execution(cycle, trade, total_wins):
+
+    # We cross validate for best params.
+    best_param, test_range_center = an.cross_val_trading(lookback_t=pr.lookback_t)
+
+    # Check if any params are still default, if so, skip one iteration.
+    if checks(trade_params=best_param, params_chk=True) == 4:
+        cycle += 1
+        return 1 , cycle, trade, total_wins
+
+    # Print params to be used.
+    print('Using these params for this cycle:')
+    print('[[train, delay, NRMSE, lookback_t, test, ridge]]:')
+    for bp in best_param:
+        print(bp)
 
     # Build + get new data since cross val may have taken some time.
     # Build data up + get one for the duration that build last took
     picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
 
-    start_get_end = datetime.datetime.now()
+    start_get_end = datetime.datetime.now().strftime('%H:%M:%S.%f')
+    start_get_end2 = datetime.datetime.now()
 
     # Load dataframe
     df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = an.lock_and_load(picklename=picklename, lookback=pr.lookback_t, seconds=get_one_second)
@@ -386,13 +401,20 @@ def trade_execution(cycle, trade, total_wins):
     # Compute what trade actions to take
     # Returns a list of test_predictions_quote delta when trading.
     # ^ between last data and test_range_center + 1 second.
+    # results = []
+    # for d in pr.delay_range:
+    #     for t in pr.train_range:
+    #         results.append(
+    #             an.compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
+    #                             warmup=-1, train=t, k=d, test=pr.test_time,
+    #                             ridge_param=pr.ridge_range[0], isTrg=False, isTrading=True))
+
     results = []
-    for d in pr.delay_range:
-        for t in pr.train_range:
-            results.append(
-                an.compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
-                                warmup=-1, train=t, k=d, test=pr.test_time,
-                                ridge_param=pr.ridge_range[0], isTrg=False, isTrading=True))
+    for p in best_param:
+        results.append(
+            an.compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=p[0], k=p[1],
+                            test=p[4], ridge_param=p[5], isTrg=False, isTrading=True))
+    print('*** test_range_center used for trade prediction:', test_range_center)
 
     action_count = 0
     mean_delta = 0
@@ -411,22 +433,32 @@ def trade_execution(cycle, trade, total_wins):
     #     action = 1
     # if action_count == 0 and mean_delta < 0:
     #     action = 0
-    random_action = np.random.randint(0,2)
-    action_fraction = action_count / (len(results)*len(results[0]))
+    # random_action = np.random.randint(0,2)
+    # action_fraction = action_count / (len(results)*len(results[0]))
 
-    action = random_action
-    # svc_action = mse.svc_trading(consolidated_array, random_action, action_fraction, mean_delta, pr.delay_range)
-    # print('svc action vs random_action:', svc_action, random_action)
-    # if svc_action == random_action:
-    #     action = svc_action
+    action = None
+    # action = random_action
+    # svc_outcome_up = mse.svc_trading(consolidated_array, 1, action_fraction, mean_delta, pr.delay_range)
+    # print('svc_outcome_up vs svc_outcome_down: ', svc_outcome_up[0], 'vs')
+    # print('svc_outcome_up win proba vs svc_outcome_down win proba', svc_outcome_up[1][1], 'vs')
+    # if svc_outcome_up[0] == 1:
+    #     action = 1
+    # else:
+    #     action = 0
+
+    direction_agree = 0
+    if action_count == 0:
+        action = 0
+        direction_agree += 1
+    if action_count == len(results)*len(results[0]):
+        action = 1
+        direction_agree += 1
 
     # Trade Execution
-    direction_agree = 0
     if time_mismatch != 1:
         print('Time Match?: YES')
 
         if action == 1 or action == 0:
-            direction_agree += 1
             print('Direction agreement?: YES')
 
             if abs(mean_delta) > pr.pred_delta_threshold:
@@ -434,26 +466,25 @@ def trade_execution(cycle, trade, total_wins):
 
                 # Hit it!
                 if action == 1:
-                    execute(signal=1)
+                    executed_time = execute(signal=1)
                 if action == 0:
-                    execute(signal=0)
+                    executed_time = execute(signal=0)
                 trade += 1
 
                 end_execution = datetime.datetime.now()
-                diff = end_execution - start_get_end
+                diff = end_execution - start_get_end2
                 time_betw_get_and_exec = diff.total_seconds()
                 print('>>> Time elapsed betw get_one end & execution end:', time_betw_get_and_exec)
                 print('')
 
                 # Get trade record + update timings. 2 methods to get record.
                 # Check if what we got is legit, if not, try another approach.
+                update_time_betw_get_end_and_execution_end(executed_time, start_get_end)
                 trade_opened_time, won = get_latest_trade_record(isPrint=True, approach=2)
                 if len(trade_opened_time) != 12 and ':' not in trade_opened_time:
                     trade_opened_time, won = get_latest_trade_record(isPrint=True, approach=1)
+                update_time_betw_execution_end_and_trade_open(executed_time, trade_opened_time)
                 total_wins += won
-                trade_outcome = won
-                mse.data_collection(consolidated_array, time_betw_get_and_exec, action, action_fraction, mean_delta, pr.test_time, np.arange(1,300,5), trade_outcome)
-                gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
 
 
     # Output why we did not take action.

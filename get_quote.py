@@ -226,7 +226,7 @@ def build_dataset_last_t_minutes(t=1):
 
     print('Built dataset for lookback_t:', t , 'minutes behind this time :', now.hour , now.minute)
     print('Took this amount of time:', datetime.datetime.now() - start_time, 'to get', t, 'minutes of data')
-    print('Time per minute:', (datetime.datetime.now() - start_time).total_seconds()/t )
+    print('Time per minute of data:', (datetime.datetime.now() - start_time).total_seconds()/t )
     return
 
 
@@ -236,6 +236,6 @@ if __name__ == '__main__':
     if pr.test_get_some:
         get_some(hours_list=[20,21], minutes_list=[[58,59],[0,1,2]])
     if pr.test_build_dataset_last_t:
-        build_dataset_last_t_minutes(t=60)
+        build_dataset_last_t_minutes(t=3)
         print('Time now is:', datetime.datetime.now())
 

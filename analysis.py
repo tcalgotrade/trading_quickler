@@ -26,9 +26,31 @@ warnings.filterwarnings('ignore')
 
 
 def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
+    """
+    Input
+    picklename: expected to be a string, with last 4 elements being hour+minute
+    seconds: expected to be an integer, we need this for hour_min_to_list_t
+    lookback_t: integer, in minutes
 
+    Sample pickle:
+    00:00:00.499
+    5269.92
+    00:00:01.004
+    5269.99
+    00:00:01.561
+    5269.76
+    00:00:02.065
+    5269.17
+    ...
+
+    Function
+    String up a dataset that is lookback_t minutes long ago, from the time derived from picklename.
+    Process the data. Prepare data for compute.
+    Pandas operation to be concentrated here as much as possible to keep compute numpy only.
+        This will help in the future if we do seek to go cupy GPU or Numba.
+    """
     # Build and process a dataframe containing t minutes of quote history data.
-    # We assume pickle files of past t minutes already existed. This should be handled by main trading loop.
+    # We assume pickle files of past t minutes already existed.
     try:
         # Get hour and min from picklename.
         hour = int(picklename[-4:][0:2])
@@ -37,23 +59,24 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
 
         if pr.test_cross_val_trading and pr.test_cross_val_past:
             hours_list, minutes_list = ut.hour_min_to_list_t(int(pr.test_hour), int(pr.test_minute), int(pr.test_second), t=lookback)
+
         # We gp through the timings and build up time series of minutes = lookback_t
         unpickled = ''
-        hour_front = ut.process_current_datetime(hour=hours_list[0])[0]
-        hour_back = ut.process_current_datetime(hour=hours_list[0])[1]
+        hour_front = ut.stringify_hour_min(hour=hours_list[0])[0][0]
+        hour_back = ut.stringify_hour_min(hour=hours_list[0])[0][1]
         for minute in minutes_list[0]:
-            minute_front = ut.process_current_datetime(min=minute)[2]
-            minute_back = ut.process_current_datetime(min=minute)[3]
+            minute_front = ut.stringify_hour_min(minute=minute)[1][0]
+            minute_back = ut.stringify_hour_min(minute=minute)[1][1]
             current_iter_picklename = picklename[:-4]+hour_front+hour_back+minute_front+minute_back
             unpickled += pd.read_pickle(current_iter_picklename)
 
         if len(hours_list) == 2:
             # Front
-            hour_front = ut.process_current_datetime(hour=hours_list[1])[0]
-            hour_back = ut.process_current_datetime(hour=hours_list[1])[1]
+            hour_front = ut.stringify_hour_min(hour=hours_list[1])[0][0]
+            hour_back = ut.stringify_hour_min(hour=hours_list[1])[0][1]
             for minute in minutes_list[1]:
-                minute_front = ut.process_current_datetime(min=minute)[2]
-                minute_back = ut.process_current_datetime(min=minute)[3]
+                minute_front = ut.stringify_hour_min(minute=minute)[1][0]
+                minute_back = ut.stringify_hour_min(minute=minute)[1][1]
                 current_iter_picklename = picklename[:-4]+hour_front+hour_back+minute_front+minute_back
                 unpickled += pd.read_pickle(current_iter_picklename)
 
@@ -74,18 +97,6 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
         # Not actually used. Left here for future ref.
         time = df.iloc[:-1:2] ; closing_price = df.iloc[1::2]
 
-        """
-        Sample:
-        00:00:00.499
-        5269.92
-        00:00:01.004
-        5269.99
-        00:00:01.561
-        5269.76
-        00:00:02.065
-        5269.17
-        ...
-        """
         # Split raw into 2 col, odd rows containing time stamp is col 1, even rows containing close price is col 2
         df = df[:-1:2].assign(quote=df[1::2].values)  # https://is.gd/zH0lPW
 
@@ -118,11 +129,10 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
             print('Max time diff: ', df['time_diff'].max())
             print('Min time diff: ', df['time_diff'].min())
             print('Avg time diff: ', df['time_diff'].mean())
-            print('Std Dev time diff: ', df['time_diff'].std())
             print('Max quote: ', df['quote'].max())
             print('Min quote: ', df['quote'].min())
-            print('Avg quote: ', df['quote'].mean())
-            print('Std Dev quote: ', df['quote'].std())
+            print('1st quote:', df['quote'].iloc[0])
+            print('Last quote:', df['quote'].iloc[-1])
             print('Types of our cols: \n', df.dtypes, '\n')
 
         # Prepare outputs for compute. Pandas ops consolidated here so we can use Numba for speed.
@@ -142,7 +152,7 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
         return df, np.float64(rows_in_df), np.float64(cols_in_df), total_var, dt, consolidated_array
 
     except Exception:
-        print('File loading threw an exception: ... ')
+        print('File loading and processing threw an exception: ... ')
         print(traceback.format_exc())
         return
 
@@ -160,41 +170,45 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
     # ridge parameter for regression
     ridge_param = np.float64(ridge_param)
 
-    # Convert to numba types
+    # Convert to types
     rows_in_df = np.int64(rows_in_df) ; cols_in_df = np.int64(cols_in_df)
     total_var = np.float64(total_var) ; dt = np.float64(dt)
 
-    # discrete-time versions of the times defined above
+    # Discrete-time versions of the times defined above
     # Note difference between time and number of time points
-    # traintime_pts - Number of 'dt' to trg on
-    # testtime_pts - Number of 'dt' to predict ahead
-    # warmup_pts - Number of 'dt' to have before train and test
-    # warmtrain_pts - Number of 'dt' sum of warmup_pts and traintime_pts
-    # maxtime_pts - # Number of dt sum of warm and train+tes if trg, less test if trading
+    # traintime_pts - Number of 'dt' points to trg on
+    # testtime_pts - Number of 'dt' points to predict ahead
+    # warmup_pts - Number of 'dt' points to have before train and test
+    # warmtrain_pts - Sum of warmup_pts and traintime_pts
+    # maxtime_pts - # Sum of warm and train+tes if trg, less test if trading
+
+    # Convert time to time points
     traintime_pts = np.int64(np.round(traintime / dt))
     testtime_pts = np.int64(np.round(testtime / dt))
     warmup_pts = np.round(warmuptime / dt)
+
+    # Sanity checks on points and time
+    if traintime < np.float64(-1) or testtime < np.float64(-1):
+        print('Invalid train & test time points :', traintime_pts, testtime_pts, dt)
+        return
+    if warmuptime < np.float64(-1):
+        print('Invalid warmuptime seconds while trg', warmuptime)
+
     if isTrg:
-        if traintime_pts < np.int64(0) or testtime_pts < np.int64(0):
-            print('Invalid train & test time points :', traintime_pts, testtime_pts, dt)
-            return
-        if warmuptime == np.float64(-1) or warmuptime < np.float64(-1):
+        if warmuptime == np.float64(-1):
             warmup_pts = rows_in_df - (traintime_pts+testtime_pts)
-        if warmuptime < np.float64(-1):
-            print('Invalid warmuptime seconds while trg', warmuptime)
+        if warmuptime == np.float64(-1) and traintime == np.float64(-1):
+            warmup_pts = k ; traintime_pts = rows_in_df - (k+testtime_pts)
         warmup_pts = np.int64(warmup_pts)
         warmtrain_pts = warmup_pts + traintime_pts
         maxtime_pts = np.int64(warmtrain_pts + testtime_pts)
 
     if isTrading:
         # When trading, we do not need test data.
-        if traintime_pts < np.int64(0) or testtime_pts < np.int64(0):
-            print('Invalid train & test time points :', traintime_pts, testtime_pts, dt)
-            return
-        if warmuptime == np.float64(-1) or warmuptime < np.float64(-1):
+        if warmuptime == np.float64(-1):
             warmup_pts = rows_in_df - (traintime_pts)
-        if warmuptime < np.float64(-1):
-            print('Invalid warmuptime seconds while trg', warmuptime)
+        if warmuptime == np.float64(-1) and traintime == np.float64(-1):
+            warmup_pts = k ; traintime_pts = rows_in_df - (k)
         warmup_pts = np.int64(warmup_pts)
         warmtrain_pts = warmup_pts + traintime_pts
         maxtime_pts = np.int64(warmtrain_pts)
@@ -393,7 +407,6 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
                 print('test_predictions: \n', test_predictions, '\n')
                 print('test_predictions_quote_delta:', test_predictions_quote_delta)
 
-        # Return actions to do. 0 is buy down. 1 is buy up. -1 is do nothing.
         if isTrg:
                 return test_nrmse
 
@@ -483,8 +496,13 @@ def cross_val_trading(lookback_t):
         os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_'+pr.current_system)
 
     # Build data up + get one for the duration that build last took
-    gq.build_dataset_last_t_minutes(t=pr.lookback_t)
-    picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
+    if not pr.test_cross_val_past:
+        gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
+        picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
+
+    if pr.test_cross_val_past:
+        picklename = pr.data_store_location+pr.test_date+'/'+pr.test_hour+pr.test_minute
+        get_one_second = int(pr.test_second)
 
     # Get all possible combinations of params
     if pr.test_cross_val_trading and pr.test_cross_val_specify_test_range:
@@ -524,18 +542,17 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()
     # Force a manual cross val for trading
     if pr.test_cross_val_trading:
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t)
+        # gq.build_dataset_last_t_minutes(t=pr.lookback_t)
         cross_val_trading(lookback_t=pr.lookback_t)
 
     # Quick test lock_and_load.
     if pr.test_load_function:
-        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '14022022/1100', lookback=pr.lookback_t, seconds=15, isDebug=True)
-        print('Inverse FFT of quote:', np.fft.irfft(consolidated_array, n=10))
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '14022022/0330', lookback=5, seconds=15, isDebug=True)
 
     # Quick test compute
     if pr.test_compute_function:
-        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '14022022/1100', lookback=pr.lookback_t, seconds=15, isDebug=True)
-        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=100, k=60,
-                              test=10, ridge_param=1e-8, isDebug=False, isInfo=True, isTrg=True, isTrading=False)
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '14022022/0330', lookback=60, seconds=15, isDebug=True)
+        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=60, k=13,
+                              test=60*30, ridge_param=2.5e-6, isDebug=False, isInfo=True, isTrg=True, isTrading=False)
         print('Result:', result)
 

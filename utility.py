@@ -10,39 +10,74 @@ if pr.find_pos:
     find_mouse_pos()
 
 
+def mouse_pos_roll_call():
+    pag.alert(text='Go to: Hour')
+    print('Hour pos:', pag.position())
+    pag.alert(text='Go to: UP')
+    print('UP pos:', pag.position())
+    pag.alert(text='Go to: DOWN')
+    print('DOWN pos:', pag.position())
+    pag.alert(text='Go to: DATE')
+    print('DATE pos:', pag.position())
+    pag.alert(text='Go to: Browser')
+    print('Browser pos:', pag.position())
+    pag.alert(text='Go to: Click_start')
+    print('Click_start pos:', pag.position())
+    pag.alert(text='Go to: Trade Record')
+    print('Trade Record pos:', pag.position())
+    pag.alert(text='Go to: 1st Trade Record')
+    print('1st Trade Record pos:', pag.position())
+    return
+if pr.position_roll_call:
+    mouse_pos_roll_call()
+
 def show_keys():
     return print(pag.KEYBOARD_KEYS)
 
 
-def process_current_datetime(hour=None, min=None):
+def stringify_hour_min(hour=None, minute=None):
+    """
+    Input
+    hour, minute: expects either string or integer
 
-    hour = list(str(hour))
-    min = list(str(min))
+    Function
+    We take hour and minute and convert it to double digit representation.
+        E.g: if hour is int 1, then we output an hour = '01'
 
-    if len(hour) == 1:
-        hour_front = '0'
-        hour_back = hour[0]
-    else:
-        hour_front = hour[0]
-        hour_back = hour[1]
+    Output
+    hour and minute: in double digit representation.
+    """
+    if hour is float or minute is float:
+        raise Exception
 
-    if len(min) == 1:
-        min_front = '0'
-        min_back = min[0]
-    else:
-        min_front = min[0]
-        min_back = min[1]
+    if hour is not None:
+        hour = str(hour)
+        if len(str(hour)) == 1:
+            hour = '0'+str(hour)
 
-    return (hour_front,hour_back,min_front,min_back)
+    if minute is not None:
+        minute = str(minute)
+        if len(str(minute)) == 1:
+            minute = '0'+str(minute)
+
+    return hour, minute
 
 
 def hour_min_to_list_t(hour, minute, second=1, t=1):
+    """
+    Input
+    hour, minute, second: expected to be integers, to represent time
+    t: expected to be integers
 
+    Function
+    Given a time, we calculate the hours and minutes needed that would represent t minutes ago.
+        E.g.: t = 20 , and we are given hour = 10 , and minute = 15, then output should be
+        hours_list = [9,10] and minutes_list = [range(55,60), range(0,10)]
+    """
     hours_list = None
     minutes_list = None
 
     # Assuming t is no larger than 60 minutes
-
     if t <= minute:
         hours_list = [hour]
         if second > 0:
@@ -78,7 +113,7 @@ def tab_switch(tab, wait=0.3, refresh=False):
 
 def simple_sched_start(year, month, day, hour, minute,sec=0):
     # https://is.gd/Lb9tlf
-    target_time = datetime.datetime(year, month, day, hour, minute,sec)
+    target_time = datetime.datetime(year, month, day, hour, minute, sec)
     while datetime.datetime.now() < target_time:
         time.sleep(10)
     print('Target time:', year,':', month,':', day,':', hour,':', minute, 'Commencing trading now...\n')

@@ -49,7 +49,7 @@ def training():
     isSaveParams = True
 
     data = np.load('mlp_svc_input.npy', allow_pickle=True)
-    cols_to_delete = (48,49)
+    cols_to_delete = (303,304)
     if cols_to_delete is not None:
         # Expects a tuple
         data = np.delete(data, cols_to_delete, axis=1)
@@ -63,7 +63,7 @@ def training():
     X_test = data[round((trg_percent)*rows):, :-2]
     Y_test = np.int32(data[round((trg_percent)*rows):, -2:-1])
 
-    clf = make_pipeline(StandardScaler(), SVC(C=0.5, probability=True, kernel='linear'))
+    clf = make_pipeline(StandardScaler(), SVC(C=2, probability=True, kernel='linear', gamma='auto', degree=8))
     clf.fit(X_trg,Y_trg)
     test_score = clf.score(X_test, Y_test)
     print('Test score:', test_score)
@@ -84,13 +84,13 @@ def predict():
     f.close()
 
     data = np.load('mlp_svc_input.npy', allow_pickle=True)
-    cols_to_delete = (48,49)
+    cols_to_delete = (303,304)
     if cols_to_delete is not None:
         # Expects a tuple
         data = np.delete(data, cols_to_delete, axis=1)
     rows, cols = data.shape
     print('Data shape:', data.shape)
-    trg_percent = 0.9
+    trg_percent = 0.99
     np.random.shuffle(data)
 
     X_test = data[round((trg_percent)*rows):, :-2]
@@ -114,7 +114,7 @@ def svc_trading(consolidated_array, action, action_fraction, mean_delta, time_ra
     stdev = np.array([], dtype=np.float64)
     diff = np.array([], dtype=np.float64)
 
-    for time in time_range:
+    for time in np.arange(2,300,5):
         max = np.append(max, consolidated_array[:,-1:]-np.max(consolidated_array[:,-time:]))
         min = np.append(min, consolidated_array[:,-1:]-np.min(consolidated_array[:,-time:]))
         mean = np.append(mean, consolidated_array[:,-1:]-np.mean(consolidated_array[:, -time:]))
@@ -131,8 +131,9 @@ def svc_trading(consolidated_array, action, action_fraction, mean_delta, time_ra
     f.close()
 
     pred = svc.predict(data_point)[0]
+    probabilities = svc.predict_proba(data_point)[0]
 
-    return pred
+    return pred, probabilities
 
 
 if __name__ == '__main__':

@@ -7,26 +7,26 @@ asset_duration = 5 # in seconds
 if current_system == 'rested':
     # Check browser at 100% zoom level. Window at half.
     if asset_name == 'Quickler':
-        olymp_hr = (162,973)
-        olymp_up = (1812,580) # Half: (1812,580) Maximized: (3692, 580)
-        oylmp_down = (1812,659) # Half: (1812,659) Maximized: (3692, 659)
-        olymp_date = (187,887)
+        olymp_hr = (145,-377)
+        olymp_up = (2293,-770) # Half: (1812,580) Maximized: (3692, 580)
+        oylmp_down = (2293,-681) # Half: (1812,659) Maximized: (3692, 659)
+        olymp_date = (266,-475)
         olymp_day = None
-        olymp_account_switch = (1610,165)
-        olymp_demo_account = (1502,267)
-        olymp_usd_account = (1502,396)
-        olymp_amount = (1852,320)
+        olymp_account_switch = None
+        olymp_demo_account = None
+        olymp_usd_account = None
+        olymp_amount = None
     if asset_name == 'EURUSD':
         olymp_hr = (164,1100)
         olymp_up = (1800,683) # Half: (1812,580) Maximized: (3692, 580)
         oylmp_down = (1803,763) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (280,1001)
         olymp_day = None
-    olymp_browser = (1799, 765)
-    olymp_trade_record = (323,702)
-    olymp_first_trade_record = (414,703)
-    click_start = (132, 1114)
-    quote_interval_pricewait = 1
+    olymp_browser = (279, -1275)
+    olymp_trade_record = (1208, -806)
+    olymp_first_trade_record = (659,-649)
+    click_start = (136, -241)
+    quote_interval_pricewait = 0.75
 if current_system == 'z400':
     # Check browser at 100% zoom level
     if asset_name == 'Quickler':
@@ -35,10 +35,10 @@ if current_system == 'z400':
         oylmp_down = (888,389) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (171,572)
         olymp_day = None
-        olymp_account_switch = (689,105)
-        olymp_demo_account = (695,179)
-        olymp_usd_account = (695,263)
-        olymp_amount = ()
+        olymp_account_switch = None
+        olymp_demo_account = None
+        olymp_usd_account = None
+        olymp_amount = None
     if asset_name == 'EURUSD':
         olymp_hr = ()
         olymp_up = () # Half: (1812,580) Maximized: (3692, 580)
@@ -54,49 +54,86 @@ if current_system == 'z400':
 # Data file location
 data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
 
-# Levers for testing
+# Print coordinate of mouse position
 find_pos = False
+position_roll_call = False
+
+# Testing for get_quote
 test_get_one = False
 test_get_some = False
 test_build_dataset_last_t = False
-test_build_dataset = False
+
+# Testing for analysis
 test_load_function = False
 test_compute_function = False
+test_force_trade = False
 
 # Testing with cross_val_trading.
 # Will overwrite files in data/training/*today*
 test_cross_val_trading = False
 test_cross_val_past = False
 test_cross_val_specify_test_range = False
-test_force_trade = False
 
 if test_cross_val_past:
-    test_hour = '16' ; test_minute = '20' ; test_second = '15'
+    test_hour = '05' ; test_minute = '15' ; test_second = '15'
+    test_date = '15022022'
 
+"""
+lookback_t: expected to be an integer 
+In minutes. Larger values allow for wider range of warm_range.
+If set to 2, during trading, note that it is less than 2, more like 1+ mins as we get most current with get one.
+If cross validating, likely one will have the full minute of data.
+Currently supports max of 60.
+Larger values can give lower NRMSE, due to higher variance in the data (see test_nrmse in compute)
+
+warm_range: expected to be a list of integers.
+Iterated over to "slide" along time in the data In seconds.
+USe -1 to max out on warm, then train and test on as close to current as possible. Must be > 0.
+Be careful to note what best_params() function output, w.r.t to this param.
+A list of warm_range: np.arange(45,(lookback_t-2)*60,30); warm_range = np.append(warm_range,-1)
+
+train_range: expected to be a list of integers.
+How many time points to use for training to predict test_range
+NG-RC paper used 10 for this.
+Use -1 for both train and warm to set warm to just what we need for delay to process 1st data point, 
+    then max out train points to predict for test points given.
+
+delay_range: expected to be a list of integers.
+How many time points to look behind for each item in train_range in order to derive weights.
+High values, in excess of 50 for this machine, can lead to drastic increase in compute times.
+
+ridge_range: expected to be a list of integers.
+Tikhonov regularization. NG-RC paper used 2.5e-6 for this. 
+
+threshold_test_nrmse: expected to be a list of integers.
+Used in cross_val_ngrc to filter the results of each compute.
+If test_nrmse output is not smaller than this, we do not save the param.
+Set higher values to allow more results to show up.
+
+"""
 if test_cross_val_specify_test_range:
-    test_range = [5.5,6,6.5,7,7.5,8]  # In seconds.
+    test_range = [5]  # In seconds.
 
 if test_cross_val_trading:
-    lookback_t =  5 # Larger values of lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
-    warm_range = np.arange(45,(lookback_t-1)*60,60) ; warm_range = np.append(warm_range,-1)  # In seconds. -1 to train and test on as close to current as possible. Must be > 0
-    train_range = range(2,30) # In seconds
-    delay_range = range(2,30) # In seconds
-    ridge_range = np.linspace(1e-8,1e-7,2)
-    threshold_test_nrmse = [1] # Set to 1 to allow all to show up
+    lookback_t = 60
+    warm_range = [-1]
+    delay_range = range(1,20)
+    train_range = [-1]
+    ridge_range = [2.5e-6]
+    threshold_test_nrmse = [1]
+
 else:
-    lookback_t = 6  # Larger lookback_t allows for wider range of warm_range. if =2, note that it is actually more like 1+ mins as we get most current with get one.
-    warm_range = [] ; warm_range = np.append(warm_range,-1) # In seconds. -1 to train and test on as close to current as possible. Must be > 0
-    train_range = [21] # In seconds
-    delay_range = [3,4,7,8] # In seconds
-    ridge_range = [1e-8]
-    test_time = asset_duration+2
-    threshold_test_nrmse = [1] # Set to 1 to allow all to show up
+    lookback_t = 60
+    warm_range = [-1]
+    delay_range = range(2,20)
+    train_range = [-1]
+    ridge_range = [2.5e-6]
+    threshold_test_nrmse = [1]
 
 # Trade Execution Params
-lookback_t_min = 3 # Only read by compute() when predicting for trade.
-total_trade = 9999
+lookback_t_min = 2 # Only read by compute() when predicting for trade.
+total_trade = 10
 pred_delta_threshold = 0
-time_to_get_quote_seconds = 2.1
 interval_typew = 0
 traderecord_interval_refresh = 5
 random_sleep = False
