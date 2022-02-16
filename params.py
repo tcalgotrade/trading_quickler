@@ -49,11 +49,11 @@ if current_system == 'z400':
     olymp_trade_record = (937,400)
     olymp_first_trade_record = (434,549)
     click_start = (140,1027)
-    quote_interval_pricewait = 1
+    quote_interval_pricewait = 2
 
 # Data file location
 # data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
-data_store_location = 'C:/Users/sar02/Desktop/data/'
+data_store_location = '//DESKTOP-RESTED/data'
 
 # Print coordinate of mouse position
 find_pos = False
