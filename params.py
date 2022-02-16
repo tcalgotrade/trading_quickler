@@ -52,11 +52,12 @@ if current_system == 'z400':
     quote_interval_pricewait = 1
 
 # Data file location
-data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
+# data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
+data_store_location = 'C:/Users/sar02/Desktop/data/'
 
 # Print coordinate of mouse position
 find_pos = False
-position_roll_call = True
+position_roll_call = False
 
 # Testing for get_quote
 test_get_one = False
@@ -117,7 +118,7 @@ if test_cross_val_specify_test_range:
 if test_cross_val_trading:
     lookback_t = 60
     warm_range = [-1]
-    delay_range = range(1,20)
+    delay_range = range(2,20)
     train_range = [-1]
     ridge_range = [2.5e-6]
     threshold_test_nrmse = [1]
@@ -125,10 +126,10 @@ if test_cross_val_trading:
 else:
     lookback_t = 60
     warm_range = [-1]
-    delay_range = range(2,20)
+    delay_range = range(2,25)
     train_range = [-1]
     ridge_range = [2.5e-6]
-    threshold_test_nrmse = [1]
+    threshold_test_nrmse = [0.1]
 
 # Trade Execution Params
 lookback_t_min = 2 # Only read by compute() when predicting for trade.

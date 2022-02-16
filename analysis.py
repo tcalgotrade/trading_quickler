@@ -67,18 +67,26 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
         for minute in minutes_list[0]:
             minute_front = ut.stringify_hour_min(minute=minute)[1][0]
             minute_back = ut.stringify_hour_min(minute=minute)[1][1]
-            current_iter_picklename = picklename[:-4]+hour_front+hour_back+minute_front+minute_back
-            unpickled += pd.read_pickle(current_iter_picklename)
+            try:
+                current_iter_picklename = picklename[:-4] + hour_front + hour_back + minute_front + minute_back
+                unpickled += pd.read_pickle(current_iter_picklename)
+            except:
+                current_iter_picklename = picklename[:-16] + hour_front + hour_back + minute_front + minute_back
+                unpickled += pd.read_pickle(current_iter_picklename)
 
         if len(hours_list) == 2:
-            # Front
             hour_front = ut.stringify_hour_min(hour=hours_list[1])[0][0]
             hour_back = ut.stringify_hour_min(hour=hours_list[1])[0][1]
             for minute in minutes_list[1]:
                 minute_front = ut.stringify_hour_min(minute=minute)[1][0]
                 minute_back = ut.stringify_hour_min(minute=minute)[1][1]
-                current_iter_picklename = picklename[:-4]+hour_front+hour_back+minute_front+minute_back
-                unpickled += pd.read_pickle(current_iter_picklename)
+                try:
+                    current_iter_picklename = picklename[:-4] + hour_front + hour_back + minute_front + minute_back
+                    unpickled += pd.read_pickle(current_iter_picklename)
+                except:
+                    current_iter_picklename = picklename[:-16] + hour_front + hour_back + minute_front + minute_back
+                    unpickled += pd.read_pickle(current_iter_picklename)
+
 
         # Split it into a proper dataframe
         df = pd.DataFrame([x.split(' ') for x in unpickled.split('\n')])
@@ -359,13 +367,13 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
             # We compute between end of last quote in data with every time point ahead.
             # i - (i+1) , i - (i+2), i - (i+3) ...
             ground_truth_quote_delta = np.cumsum(np.diff(ground_truth))
-            test_predictions_quote_delta = np.cumsum(np.diff(test_predictions))
+            test_predictions_quote_delta = np.sum(np.diff(test_predictions))
 
         if isTrading:
             test_predictions = x_test[0:d, 0:]
             # We compute between end of last quote in data with every time point ahead.
             # i - (i+1) , i - (i+2), i - (i+3) ...
-            test_predictions_quote_delta = np.cumsum(np.diff(test_predictions))
+            test_predictions_quote_delta = np.sum(np.diff(test_predictions))
 
         if isDebug:
             print('warm:', warmup)
@@ -411,7 +419,7 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
                 return test_nrmse
 
         if isTrading:
-                return test_predictions_quote_delta
+                return [test_predictions_quote_delta]
 
     except Exception:
         return
@@ -495,9 +503,8 @@ def cross_val_trading(lookback_t):
     if not os.path.isdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_'+pr.current_system):
         os.mkdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_'+pr.current_system)
 
-    # Build data up + get one for the duration that build last took
+    # Get one for the duration that build last took
     if not pr.test_cross_val_past:
-        gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
         picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
 
     if pr.test_cross_val_past:
@@ -534,6 +541,11 @@ def cross_val_trading(lookback_t):
 
     print('Cross Val took this amount of time:', datetime.datetime.now()-start_time)
     print('>>> Time @ Cross Val end : ', datetime.datetime.now().strftime("%H:%M:%S.%f"))
+
+    # Remove get_one_now quote.
+    files = glob.glob(picklename[:-4]+'*')
+    for f in files:
+        os.remove(f)
 
     return best_param, test_range_center
 

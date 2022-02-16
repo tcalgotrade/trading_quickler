@@ -142,11 +142,12 @@ def get_one_now():
 
     data = olymptrade_time_and_quote(hour=hour, minute=minute)
 
+    picklename = pr.data_store_location+date+'/get_one_now_'+hour+minute
+
     # Save it.
-    with open(pr.data_store_location + date + '/' + hour + minute, 'wb') as f:
+    with open(picklename, 'wb') as f:
         pickle.dump(data, f)
 
-    picklename = pr.data_store_location+date+'/'+hour+minute
 
     if pr.test_cross_val_trading and pr.test_cross_val_past:
         return picklename, int(pr.test_hour), int(pr.test_second), int(pr.test_second)
@@ -222,12 +223,12 @@ def build_dataset_last_t_minutes(t=1, include_current=True):
         current_hour = int(pr.test_hour); current_minute = int(pr.test_minute); current_sec = int(pr.test_second)
 
     if not include_current:
-        if now.hour - 1 < 0:
+        if now.hour - 1 < 0 and now.minute - 1 < 0:
             current_hour = 23
-        if now.minute - 1 < 0:
             current_minute = 59
-        else:
-            current_minute = now.minute - 1
+        if now.minute - 1 < 0:
+            current_hour = now.hour - 1
+            current_minute = 59
 
     hours , minutes = ut.hour_min_to_list_t(current_hour, current_minute, current_sec, t=t)
     get_some(hours_list=hours, minutes_list=minutes)

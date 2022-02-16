@@ -1,3 +1,5 @@
+import glob
+import os
 import numpy as np
 import get_quote as gq
 import analysis as an
@@ -360,8 +362,12 @@ def update_time_betw_get_end_and_execution_end(execute_time, start_get_end):
 #     return 0 , cycle, trade, total_wins
 
 
-@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(0))
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(3))
 def trade_execution(cycle, trade, total_wins):
+
+    if datetime.datetime.now().second < 10:
+        print('Not yet 10 seconds into current minute. Hold on...')
+        time.sleep(10-datetime.datetime.now().second)
 
     # We cross validate for best params.
     best_param, test_range_center = an.cross_val_trading(lookback_t=pr.lookback_t)
@@ -381,8 +387,8 @@ def trade_execution(cycle, trade, total_wins):
     # Build data up + get one for the duration that build last took
     picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
 
-    start_get_end = datetime.datetime.now().strftime('%H:%M:%S.%f')
-    start_get_end2 = datetime.datetime.now()
+    start_get_end = datetime.datetime.now()
+    start_get_end_for_update = start_get_end.strftime('%H:%M:%S.%f')
 
     # Load dataframe
     df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = an.lock_and_load(picklename=picklename, lookback=pr.lookback_t, seconds=get_one_second)
@@ -390,8 +396,13 @@ def trade_execution(cycle, trade, total_wins):
     print('Dataframe Statistics:')
     print('>>> Time @ first row:', df['time'].iloc[0])
     print('>>> Time @ last row:', df['time'].iloc[-1])
-    print('>>> Time @ start_get_end:', start_get_end)
+    print('>>> Time @ start_get_end:', start_get_end_for_update)
     print('')
+
+    # Remove get_one_now quote.
+    files = glob.glob(picklename[:-4]+'*')
+    for f in files:
+        os.remove(f)
 
     # Check current min/sec vs min/sec of last row of dataframe.
     time_mismatch = 0
@@ -472,14 +483,14 @@ def trade_execution(cycle, trade, total_wins):
                 trade += 1
 
                 end_execution = datetime.datetime.now()
-                diff = end_execution - start_get_end2
+                diff = end_execution - start_get_end
                 time_betw_get_and_exec = diff.total_seconds()
                 print('>>> Time elapsed betw get_one end & execution end:', time_betw_get_and_exec)
                 print('')
 
                 # Get trade record + update timings. 2 methods to get record.
                 # Check if what we got is legit, if not, try another approach.
-                update_time_betw_get_end_and_execution_end(executed_time, start_get_end)
+                update_time_betw_get_end_and_execution_end(executed_time, start_get_end_for_update)
                 trade_opened_time, won = get_latest_trade_record(isPrint=True, approach=2)
                 if len(trade_opened_time) != 12 and ':' not in trade_opened_time:
                     trade_opened_time, won = get_latest_trade_record(isPrint=True, approach=1)
@@ -496,7 +507,7 @@ def trade_execution(cycle, trade, total_wins):
         print('No execution - pred_delta_threshold met?: NO')
 
     # Check if we have traded enough.
-    if trade == pr.total_trade or total_wins > 1 * trade:
+    if trade == pr.total_trade or total_wins > 0.6 * trade:
         end(cycle,trade, total_wins)
         return -1, cycle, trade, total_wins
 
