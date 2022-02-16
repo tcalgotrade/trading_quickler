@@ -33,5 +33,5 @@ if __name__ == '__main__':
                 else:
                     break
             time.sleep(59-datetime.datetime.now().second)
-            gq.build_dataset_last_t_minutes(t=pr.lookback_t_min, include_current=False)
+            gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
 

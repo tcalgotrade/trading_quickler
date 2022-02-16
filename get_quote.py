@@ -205,7 +205,7 @@ def get_some(hours_list, minutes_list):
     return
 
 
-def build_dataset_last_t_minutes(t=1, include_current=True):
+def build_dataset_last_t_minutes(t=1):
     """
     Input
     t: Expects an integer to represent minutes.
@@ -221,16 +221,6 @@ def build_dataset_last_t_minutes(t=1, include_current=True):
 
     if pr.test_cross_val_trading and pr.test_cross_val_past:
         current_hour = int(pr.test_hour); current_minute = int(pr.test_minute); current_sec = int(pr.test_second)
-
-    if not include_current:
-        if now.hour - 1 < 0 and now.minute - 1 < 0:
-            current_hour = 23
-            current_minute = 59
-        if now.hour - 1 >= 0 and now.minute - 1 < 0:
-            current_hour = now.hour - 1
-            current_minute = 59
-        if now.minute - 1 >= 0:
-            current_minute = now.minute - 1
 
     hours , minutes = ut.hour_min_to_list_t(current_hour, current_minute, current_sec, t=t)
     get_some(hours_list=hours, minutes_list=minutes)
