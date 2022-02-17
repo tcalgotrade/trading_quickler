@@ -40,9 +40,9 @@ if current_system == 'z400':
         olymp_up = (1365,393) # Half: (1812,580) Maximized: (3692, 580)
         oylmp_down = (1365,440) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (190,577)
-        olymp_info_button = ()
-        olymp_right_arrow = ()
-        olymp_quote_history = ()
+        olymp_info_button = (269,310)
+        olymp_right_arrow = (310,523)
+        olymp_quote_history = (248,523)
         olymp_day = None
         olymp_account_switch = None
         olymp_demo_account = None
@@ -68,7 +68,7 @@ data_store_location = '//DESKTOP-RESTED/data/'
 
 # Print coordinate of mouse position
 find_pos = False
-position_roll_call = False
+position_roll_call = True
 
 # MLP-SVC
 mlpsvc_datacollect = True
