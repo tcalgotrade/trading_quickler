@@ -176,31 +176,21 @@ def get_some(hours_list, minutes_list):
     if not os.path.isdir(pr.data_store_location + date + '/'):
         os.mkdir(pr.data_store_location + date + '/')
 
-    # 1st element of hours_list
-    hour, _ = ut.stringify_hour_min(hour=hours_list[0])
+    i = 0
+    for h in hours_list:
+        # 1st element of hours_list
+        hour, _ = ut.stringify_hour_min(hour=h)
 
-    # For 1stelement of hours_list, get minutes.
-    for minute in minutes_list[0]:
-        _, minute = ut.stringify_hour_min(minute=minute)
-        data = olymptrade_time_and_quote(hour=hour, minute=minute)
-
-        # Save it.
-        with open(pr.data_store_location+date+'/'+hour+minute, 'wb') as f:
-            pickle.dump(data, f)
-
-    # 2nd element of hours_list
-    if len(hours_list) == 2:
-
-        hour, _ = ut.stringify_hour_min(hour=hours_list[1])
-
-        # For 2nd element of hours_list, get minutes.
-        for minute in minutes_list[1]:
+        # For 1st element of hours_list, get minutes.
+        for minute in minutes_list[i]:
             _, minute = ut.stringify_hour_min(minute=minute)
             data = olymptrade_time_and_quote(hour=hour, minute=minute)
 
             # Save it.
-            with open(pr.data_store_location + date + '/' + hour + minute, 'wb') as f:
+            with open(pr.data_store_location+date+'/'+hour+minute, 'wb') as f:
                 pickle.dump(data, f)
+        i += 1
+
 
     return
 
