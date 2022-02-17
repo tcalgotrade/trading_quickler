@@ -60,33 +60,26 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
         if pr.test_cross_val_trading and pr.test_cross_val_past:
             hours_list, minutes_list = ut.hour_min_to_list_t(int(pr.test_hour), int(pr.test_minute), int(pr.test_second), t=lookback)
 
-        # We gp through the timings and build up time series of minutes = lookback_t
+        # We go through the timings and build up time series of minutes = lookback_t
         unpickled = ''
-        hour_front = ut.stringify_hour_min(hour=hours_list[0])[0][0]
-        hour_back = ut.stringify_hour_min(hour=hours_list[0])[0][1]
-        for minute in minutes_list[0]:
-            minute_front = ut.stringify_hour_min(minute=minute)[1][0]
-            minute_back = ut.stringify_hour_min(minute=minute)[1][1]
-            try:
-                current_iter_picklename = picklename[:-4] + hour_front + hour_back + minute_front + minute_back
-                unpickled += pd.read_pickle(current_iter_picklename)
-            except:
-                current_iter_picklename = picklename[:-16] + hour_front + hour_back + minute_front + minute_back
-                unpickled += pd.read_pickle(current_iter_picklename)
 
-        if len(hours_list) == 2:
-            hour_front = ut.stringify_hour_min(hour=hours_list[1])[0][0]
-            hour_back = ut.stringify_hour_min(hour=hours_list[1])[0][1]
-            for minute in minutes_list[1]:
-                minute_front = ut.stringify_hour_min(minute=minute)[1][0]
-                minute_back = ut.stringify_hour_min(minute=minute)[1][1]
+        # Cycle through each hour and corresponding list of minutes, then read pickle
+        i = 0
+        for h in hours_list:
+
+            hour, _ = ut.stringify_hour_min(hour=h)
+
+            for minute in minutes_list[i]:
+                _, minute = ut.stringify_hour_min(minute=minute)
+
+                # We try /get_one_now_HHMM 1st. If it fails, we slice to /HHMM
                 try:
-                    current_iter_picklename = picklename[:-4] + hour_front + hour_back + minute_front + minute_back
+                    current_iter_picklename = picklename[:-4] + hour + minute
                     unpickled += pd.read_pickle(current_iter_picklename)
                 except:
-                    current_iter_picklename = picklename[:-16] + hour_front + hour_back + minute_front + minute_back
+                    current_iter_picklename = picklename[:-16] + hour + minute
                     unpickled += pd.read_pickle(current_iter_picklename)
-
+            i += 1
 
         # Split it into a proper dataframe
         df = pd.DataFrame([x.split(' ') for x in unpickled.split('\n')])
@@ -559,7 +552,7 @@ if __name__ == '__main__':
 
     # Quick test lock_and_load.
     if pr.test_load_function:
-        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '14022022/0330', lookback=5, seconds=15, isDebug=True)
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '17022022/1215', lookback=240, seconds=15, isDebug=True)
 
     # Quick test compute
     if pr.test_compute_function:

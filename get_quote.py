@@ -176,12 +176,12 @@ def get_some(hours_list, minutes_list):
     if not os.path.isdir(pr.data_store_location + date + '/'):
         os.mkdir(pr.data_store_location + date + '/')
 
+    # Cycle through each hour and corresponding list of minutes, then save pickle
     i = 0
     for h in hours_list:
-        # 1st element of hours_list
+
         hour, _ = ut.stringify_hour_min(hour=h)
 
-        # For 1st element of hours_list, get minutes.
         for minute in minutes_list[i]:
             _, minute = ut.stringify_hour_min(minute=minute)
             data = olymptrade_time_and_quote(hour=hour, minute=minute)

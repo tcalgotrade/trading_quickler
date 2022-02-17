@@ -506,8 +506,10 @@ def trade_execution(cycle, trade, total_wins):
     if abs(mean_delta) < pr.pred_delta_threshold:
         print('No execution - pred_delta_threshold met?: NO')
 
-    # Check if we have traded enough.
-    if trade == pr.total_trade or total_wins > 0.6 * trade:
+    # Check if traded enough. Stop when total trade is reached or break even.
+    # 1/(p+1) is the minimum win fraction to break even at p payout.
+    # For Quickler, p is 0.8.
+    if trade == pr.total_trade or total_wins > 1/(pr.payout+1) * trade:
         end(cycle,trade, total_wins)
         return -1, cycle, trade, total_wins
 

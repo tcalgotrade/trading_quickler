@@ -16,12 +16,14 @@ if current_system == 'rested':
         olymp_demo_account = None
         olymp_usd_account = None
         olymp_amount = None
+        payout = 0.8
     if asset_name == 'EURUSD':
         olymp_hr = (164,1100)
         olymp_up = (1800,683) # Half: (1812,580) Maximized: (3692, 580)
         oylmp_down = (1803,763) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (280,1001)
         olymp_day = None
+        payout = 0.85
     olymp_browser = (279, -1275)
     olymp_trade_record = (1208, -806)
     olymp_first_trade_record = (659,-649)
@@ -116,24 +118,24 @@ if test_cross_val_specify_test_range:
     test_range = [5]  # In seconds.
 
 if test_cross_val_trading:
-    lookback_t = 60
+    lookback_t = 180
     warm_range = [-1]
     delay_range = range(2,20)
     train_range = [-1]
-    ridge_range = [2.5e-6]
+    ridge_range = [0]
     threshold_test_nrmse = [1]
 
 else:
-    lookback_t = 60
+    lookback_t = 240
     warm_range = [-1]
     delay_range = range(2,25)
     train_range = [-1]
-    ridge_range = [2.5e-6]
-    threshold_test_nrmse = [0.1]
+    ridge_range = [0]
+    threshold_test_nrmse = [0.04]
 
 # Trade Execution Params
 lookback_t_min = 2 # Only read by compute() when predicting for trade.
-total_trade = 10
+total_trade = 100
 pred_delta_threshold = 0
 interval_typew = 0
 traderecord_interval_refresh = 5
