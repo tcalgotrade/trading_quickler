@@ -24,14 +24,12 @@ if __name__ == '__main__':
             time.sleep(3)
 
     if all_day_build_last_t:
-        gq.build_dataset_last_t_minutes(t=60)
+        gq.build_dataset_last_t_minutes(t=2)
         while True:
             if ex.checks(day_change_chk=True) == 1:
                 time.sleep((pr.lookback_t_min+1)*60)
-                if pr.olymp_day is not None or pr.olymp_day != ():
-                    ut.date_changer()
-                else:
-                    break
+                # Change date by refreshing.
+                ut.refresh()
             time.sleep(59-datetime.datetime.now().second)
             gq.build_dataset_last_t_minutes(t=pr.lookback_t_min)
 

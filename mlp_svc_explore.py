@@ -7,27 +7,29 @@ import os
 import analysis as an
 import params as pr
 
-def data_collection(consolidated_array, time_delta, action, action_fraction, mean_delta,
-                    test_time, time_range, trade_outcome):
+def data_collection(consolidated_array, time_range,
+                    action, predicted_delta, test_nrmse, delay , test_range_center, lookback,
+                    trade_outcome):
 
     # Calculate stats, with reference to last data and looking back as per time_range.
-    max = np.array([], dtype=np.float64)
-    min = np.array([], dtype=np.float64)
-    mean = np.array([], dtype=np.float64)
+    # max = np.array([], dtype=np.float64)
+    # min = np.array([], dtype=np.float64)
+    # mean = np.array([], dtype=np.float64)
     stdev = np.array([], dtype=np.float64)
     diff = np.array([], dtype=np.float64)
 
     for time in time_range:
-        max = np.append(max, consolidated_array[:,-1:]-np.max(consolidated_array[:,-time:]))
-        min = np.append(min, consolidated_array[:,-1:]-np.min(consolidated_array[:,-time:]))
-        mean = np.append(mean, consolidated_array[:,-1:]-np.mean(consolidated_array[:, -time:]))
+        # max = np.append(max, consolidated_array[:,-1:]-np.max(consolidated_array[:,-time:]))
+        # min = np.append(min, consolidated_array[:,-1:]-np.min(consolidated_array[:,-time:]))
+        # mean = np.append(mean, consolidated_array[:,-1:]-np.mean(consolidated_array[:, -time:]))
         stdev = np.append(stdev, np.std(consolidated_array[:, -time:]))
         diff = np.append(diff, np.sum(np.diff(consolidated_array[:, -time:])))
 
     # Consolidate
-    data_point = np.array([max, min, mean, stdev, diff], dtype=np.float64).flatten()
-    data_point = np.append(data_point, [action, action_fraction, mean_delta, time_delta, test_time, trade_outcome])
-    data_point = np.round(data_point, 4)
+    data_point = np.array([stdev, diff], dtype=np.float64).flatten()
+    data_point = np.append(data_point, [action, predicted_delta, test_nrmse, delay ,
+                                        test_range_center, lookback, trade_outcome])
+    data_point = np.round(data_point, 5)
     data_point_with_quote = data_point.tolist()
     data_point_with_quote.append(consolidated_array)
 
@@ -48,8 +50,8 @@ def data_collection(consolidated_array, time_delta, action, action_fraction, mea
 def training():
     isSaveParams = True
 
-    data = np.load('mlp_svc_input.npy', allow_pickle=True)
-    cols_to_delete = (303,304)
+    data = np.load(pr.data_store_location+'mlp_svc_input.npy', allow_pickle=True)
+    cols_to_delete = None
     if cols_to_delete is not None:
         # Expects a tuple
         data = np.delete(data, cols_to_delete, axis=1)

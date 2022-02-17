@@ -12,6 +12,8 @@ if pr.find_pos:
 
 
 def mouse_pos_roll_call():
+
+    # Main platform
     pag.alert(text='Go to: Hour')
     print('Hour pos:', pag.position())
     pag.alert(text='Go to: UP')
@@ -24,10 +26,21 @@ def mouse_pos_roll_call():
     print('Browser pos:', pag.position())
     pag.alert(text='Go to: Click_start')
     print('Click_start pos:', pag.position())
+    pag.alert(text='Go to: olymp_asset_button')
+    print('olymp_asset_button pos:', pag.position())
+    pag.alert(text='Go to: olymp_info_button')
+    print('olymp_info_button pos:', pag.position())
+    pag.alert(text='Go to: olymp_right_arrow')
+    print('olymp_right_arrow pos:', pag.position())
+    pag.alert(text='Go to: olymp_quote_history')
+    print('olymp_quote_history pos:', pag.position())
+
+    # Trade recrod
     pag.alert(text='Go to: Trade Record')
     print('Trade Record pos:', pag.position())
     pag.alert(text='Go to: 1st Trade Record')
     print('1st Trade Record pos:', pag.position())
+
     return
 if pr.position_roll_call:
     mouse_pos_roll_call()
@@ -64,7 +77,7 @@ def stringify_hour_min(hour=None, minute=None):
     return hour, minute
 
 
-def hour_min_to_list_t(hour, minute, second=1, t=1):
+def hour_min_to_list_t(hour, minute, t=1):
     """
     Input
     hour, minute: expected to be integers, to represent time
@@ -138,6 +151,17 @@ def simple_sched_start(year, month, day, hour, minute,sec=0):
         time.sleep(10)
     print('Target time:', year,':', month,':', day,':', hour,':', minute, 'Commencing trading now...\n')
     print('/****************************************************************************/\n')
+    return
+
+
+def refresh():
+    pag.click(x=pr.olymp_browser[0], y=pr.olymp_browser[1])
+    pag.hotkey('f5', interval=5)
+    pag.click(x=pr.olymp_info_button[0], y=pr.olymp_info_button[1], interval=5)
+    pag.click(x=pr.olymp_right_arrow[0], y=pr.olymp_right_arrow[1], interval=1)
+    pag.click(x=pr.olymp_right_arrow[0], y=pr.olymp_right_arrow[1], interval=1)
+    pag.click(x=pr.olymp_right_arrow[0], y=pr.olymp_right_arrow[1], interval=1)
+    pag.click(x=pr.olymp_quote_history[0], y=pr.olymp_quote_history[1], interval=1)
     return
 
 

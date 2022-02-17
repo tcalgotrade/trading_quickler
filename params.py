@@ -11,12 +11,15 @@ if current_system == 'rested':
         olymp_up = (2293,-770) # Half: (1812,580) Maximized: (3692, 580)
         oylmp_down = (2293,-681) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (266,-475)
+        olymp_info_button = (426, -890)
+        olymp_right_arrow = (485, -560)
+        olymp_quote_history = (386, -564)
         olymp_day = None
         olymp_account_switch = None
         olymp_demo_account = None
         olymp_usd_account = None
         olymp_amount = None
-        payout = 0.8
+        payout = 0.0
     if asset_name == 'EURUSD':
         olymp_hr = (164,1100)
         olymp_up = (1800,683) # Half: (1812,580) Maximized: (3692, 580)
@@ -36,17 +39,22 @@ if current_system == 'z400':
         olymp_up = (1812,578) # Half: (1812,580) Maximized: (3692, 580)
         oylmp_down = (1816,660) # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = (277,866)
+        olymp_info_button = ()
+        olymp_right_arrow = ()
+        olymp_quote_history = ()
         olymp_day = None
         olymp_account_switch = None
         olymp_demo_account = None
         olymp_usd_account = None
         olymp_amount = None
+        payout = 0.0
     if asset_name == 'EURUSD':
         olymp_hr = ()
         olymp_up = () # Half: (1812,580) Maximized: (3692, 580)
         oylmp_down = () # Half: (1812,659) Maximized: (3692, 659)
         olymp_date = ()
         olymp_day = None
+        payout = 0.85
     olymp_browser = (205,100)
     olymp_trade_record = (937,400)
     olymp_first_trade_record = (434,549)
@@ -60,6 +68,9 @@ data_store_location = '//DESKTOP-RESTED/data/'
 # Print coordinate of mouse position
 find_pos = False
 position_roll_call = False
+
+# MLP-SVC
+mlpsvc_datacollect = True
 
 # Testing for get_quote
 test_get_one = False
@@ -115,7 +126,7 @@ Set higher values to allow more results to show up.
 
 """
 if test_cross_val_specify_test_range:
-    test_range = [5]  # In seconds.
+    test_range = [6]  # In seconds.
 
 if test_cross_val_trading:
     lookback_t = 180
@@ -128,14 +139,14 @@ if test_cross_val_trading:
 else:
     lookback_t = 240
     warm_range = [-1]
-    delay_range = range(2,25)
+    delay_range = range(2,20)
     train_range = [-1]
     ridge_range = [0]
-    threshold_test_nrmse = [0.04]
+    threshold_test_nrmse = [1]
 
 # Trade Execution Params
 lookback_t_min = 2 # Only read by compute() when predicting for trade.
-total_trade = 100
+total_trade = 50
 pred_delta_threshold = 0
 interval_typew = 0
 traderecord_interval_refresh = 5
@@ -143,9 +154,9 @@ random_sleep = False
 random_sleep_min = 1
 random_sleep_max = 15
 
-# Params for how far ahead to predict
-time_betw_execution_end_and_trade_open = 1.5 # Updated after every trade.
-time_betw_get_end_and_execution_end = 0.5 # Hardcoded. 0.6 for z400. 0.47 for rested.
+# Params for how far ahead to predict. Updated after every trade.
+time_betw_execution_end_and_trade_open = 1
+time_betw_get_end_and_execution_end = 1
 # Function to change global timings.
 def change_time_onthefly(time_ge=None, time_et=None): # https://is.gd/HqFpNJ
     global time_betw_execution_end_and_trade_open

@@ -25,7 +25,7 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 warnings.filterwarnings('ignore')
 
 
-def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
+def lock_and_load(picklename, lookback=pr.lookback_t, isDebug=False):
     """
     Input
     picklename: expected to be a string, with last 4 elements being hour+minute
@@ -55,10 +55,10 @@ def lock_and_load(picklename, seconds, lookback=pr.lookback_t, isDebug=False):
         # Get hour and min from picklename.
         hour = int(picklename[-4:][0:2])
         minute = int(picklename[-4:][2:4])
-        hours_list, minutes_list = ut.hour_min_to_list_t(hour, minute, seconds, t=lookback)
+        hours_list, minutes_list = ut.hour_min_to_list_t(hour, minute, t=lookback)
 
         if pr.test_cross_val_trading and pr.test_cross_val_past:
-            hours_list, minutes_list = ut.hour_min_to_list_t(int(pr.test_hour), int(pr.test_minute), int(pr.test_second), t=lookback)
+            hours_list, minutes_list = ut.hour_min_to_list_t(int(pr.test_hour), int(pr.test_minute), t=lookback)
 
         # We go through the timings and build up time series of minutes = lookback_t
         unpickled = ''
@@ -418,10 +418,10 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
         return
 
 
-def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, threshold_test_nrmse, lookback_t):
+def cross_val_ngrc(picklename, warm, train, delay, test, ridge, threshold_test_nrmse, lookback_t):
 
     # Load dataframe from pickle
-    df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=picklename, lookback=lookback_t, seconds=seconds)
+    df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=picklename, lookback=lookback_t)
 
     # Get current date
     date = datetime.datetime.now().strftime("%d%m%Y")
@@ -435,7 +435,7 @@ def cross_val_ngrc(picklename, seconds, warm, train, delay, test, ridge, thresho
 
     # When result is to take an action, check if within NRMSE threshold. If so, we save param set to pickle.
     if result < threshold_test_nrmse:
-        param = (picklename, seconds, warm, train, delay, test, ridge, np.around(result, 4), threshold_test_nrmse, lookback_t)
+        param = (picklename, warm, train, delay, test, ridge, np.around(result, 4), threshold_test_nrmse, lookback_t)
 
         # Save cross val result
         with open(pr.data_store_location + date + '/cross_val_'+pr.current_system+'/'+ start_time ,'wb') as f:
@@ -466,18 +466,18 @@ def get_best_params(test_range, now):
         # Load pickle
         with open(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_' + pr.current_system + '/' + file,
                   'rb') as f:
-            # Sample param pickle: (picklename, seconds, warm, train, delay, test, ridge,
+            # Sample param pickle: (picklename, warm, train, delay, test, ridge,
             #        test nrmse >>> np.around(result, 4), threshold_test_nrmse, lookback_t)
             current_param = pickle.load(f)
         # Init nrmse value for clarity.
-        current_nrmse = current_param[7] ; current_test = current_param[5]
+        current_nrmse = current_param[6] ; current_test = current_param[4]
         # Save set of lowest NRMSE for each item in test_range
         # [[train, delay, test NRMSE, lookback_t, test, ridge]]
         for i in range(0, len(test_range)):
             if current_nrmse < best_param[i][2] and len(test_range) >= i+1 and current_test == test_range[i]:
                 best_param.pop(i)
-                best_param.insert(i, [current_param[3], current_param[4], current_nrmse, current_param[9],
-                                      current_test, current_param[6]])
+                best_param.insert(i, [current_param[2], current_param[3], current_nrmse, current_param[8],
+                                      current_test, current_param[5]])
 
     return best_param
 
@@ -498,7 +498,7 @@ def cross_val_trading(lookback_t):
 
     # Get one for the duration that build last took
     if not pr.test_cross_val_past:
-        picklename, get_one_hour, get_one_minute, get_one_second = gq.get_one_now()
+        picklename, get_one_hour, get_one_minute = gq.get_one_now()
 
     if pr.test_cross_val_past:
         picklename = pr.data_store_location+pr.test_date+'/'+pr.test_hour+pr.test_minute
@@ -511,7 +511,7 @@ def cross_val_trading(lookback_t):
     else:
         test_range_center = pr.time_betw_execution_end_and_trade_open + pr.asset_duration + pr.time_betw_get_end_and_execution_end
         test_range = [test_range_center+0.5]
-    bag_of_params = list(itertools.product([picklename], [get_one_second], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, [lookback_t]))
+    bag_of_params = list(itertools.product([picklename], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, [lookback_t]))
     print('# of combinations:', len(bag_of_params))
 
     # Remove contents from last cross_val. We start anew each cross val during trading. No storing of files between cross vals
