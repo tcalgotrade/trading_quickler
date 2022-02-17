@@ -32,13 +32,14 @@ if current_system == 'rested':
     olymp_first_trade_record = (659,-649)
     click_start = (136, -241)
     quote_interval_pricewait = 0.75
+
 if current_system == 'z400':
     # Check browser at 100% zoom level
     if asset_name == 'Quickler':
-        olymp_hr = (143,963)
-        olymp_up = (1812,578) # Half: (1812,580) Maximized: (3692, 580)
-        oylmp_down = (1816,660) # Half: (1812,659) Maximized: (3692, 659)
-        olymp_date = (277,866)
+        olymp_hr = (97,640)
+        olymp_up = (1365,393) # Half: (1812,580) Maximized: (3692, 580)
+        oylmp_down = (1365,440) # Half: (1812,659) Maximized: (3692, 659)
+        olymp_date = (190,577)
         olymp_info_button = ()
         olymp_right_arrow = ()
         olymp_quote_history = ()
@@ -55,11 +56,11 @@ if current_system == 'z400':
         olymp_date = ()
         olymp_day = None
         payout = 0.85
-    olymp_browser = (205,100)
-    olymp_trade_record = (937,400)
-    olymp_first_trade_record = (434,549)
-    click_start = (140,1027)
-    quote_interval_pricewait = 2
+    olymp_browser = (162,68)
+    olymp_trade_record = (714,365)
+    olymp_first_trade_record = (369,467)
+    click_start = (96,693)
+    quote_interval_pricewait = 1.5
 
 # Data file location
 # data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
