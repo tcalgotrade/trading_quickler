@@ -1,3 +1,4 @@
+import numpy as np
 import pyautogui as pag
 import params as pr
 import time
@@ -66,38 +67,57 @@ def stringify_hour_min(hour=None, minute=None):
 def hour_min_to_list_t(hour, minute, second=1, t=1):
     """
     Input
-    hour, minute, second: expected to be integers, to represent time
-    t: expected to be integers
+    hour, minute: expected to be integers, to represent time
+    second: expected to be integers
+    t: expected to be integers, how far do we go back?
 
     Function
     Given a time, we calculate the hours and minutes needed that would represent t minutes ago.
-        E.g.: t = 20 , and we are given hour = 10 , and minute = 15, then output should be
-        hours_list = [9,10] and minutes_list = [range(55,60), range(0,10)]
+        Includes current minute that one is in.
+        Single hour E.g. 1: t = 5 , and we are given hour = 10 , and minute = 15, then output should be
+            hours_list = [10] and minutes_list = [range((15+1)-5,15+1)]
+        Single hour E.g. 2: t = 5 , and we are given hour = 10 , and minute = 3, then output should be
+            hours_list = [9, 10] and minutes_list = [range(59,60),range(0,4)]
+        Single hour E.g. 2: t = 6 , and we are given hour = 10 , and minute = 0, then output should be
+            hours_list = [9, 10] and minutes_list = [range(55,60),range(0,1)]
+        Multi hour E.g. 1: t = 120 , and we are given hour = 10 , and minute = 15, then output should be
+            hours_list = [8,9,10] and minutes_list = [range(16,60), range(0,60), range(0,16)]
+        Multi hour E.g. 2: t = 120 , and we are given hour = 0 , and minute = 0, then output should be
+            hours_list = [22,23,0] and minutes_list = [range(1,60), range(0,60), range(0,1)]
+    These lists are then sent to functions that use PyAutoGui to typewrite it in.
     """
     hours_list = None
     minutes_list = None
 
-    # Assuming t is no larger than 60 minutes
-    if t <= minute:
+    # If t is less than where we are at in time, we have enough within the hour.
+    if t <= minute+1:
+        # Jsut need 1 element
         hours_list = [hour]
-        if second > 0:
-            minutes_list = [range((minute-t)+1, minute+1)]
-        else:
-            minutes_list = [range((minute-t),minute)]
 
-    if t > minute:
-        if second > 0:
-            hours_list = [hour - 1, hour]
-            minutes_list = [range(60-(t-minute)+1,60),range(0,minute+1)]
-        else:
-            if t < 60:
-                hours_list = [hour - 1]
-                minutes_list = [range(60-(t-minute),60)]
+        # Form minutes_list
+        minutes_list = [range((minute+1)-t, minute+1)]
+
+        return hours_list, minutes_list
+
+    # If t is way more than where are at in time.
+    if t > minute+1:
+        # Calc how many hours we need.
+        number_of_hours = np.int64(np.ceil(t/60))
+
+        # Create list of hours
+        hours_list = np.arange((hour)-number_of_hours,hour+1)
+
+        # In the event we cross over to next day, check for negative and add 24.
+        hours_list[hours_list < 0] += 24
+
+        # Form minutes_list
+        for i in range(0,number_of_hours+1):
+            if i == 0: minutes_list = [range((60-(t-((number_of_hours-1)*60+minute+1))),60)]
+            elif i == number_of_hours: minutes_list.insert(number_of_hours, range(0,minute+1))
             else:
-                hours_list = [hour-1]
-                minutes_list = [range(60 - (t - minute), 60)]
+                minutes_list.insert(i, range(0,60))
 
-    return hours_list, minutes_list
+        return hours_list, minutes_list
 
 
 def tab_switch(tab, wait=0.3, refresh=False):
