@@ -68,7 +68,7 @@ data_store_location = '//DESKTOP-RESTED/data/'
 
 # Print coordinate of mouse position
 find_pos = False
-position_roll_call = True
+position_roll_call = False
 
 # MLP-SVC
 mlpsvc_datacollect = True
