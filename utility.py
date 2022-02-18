@@ -147,6 +147,7 @@ def tab_switch(tab, wait=0.3, refresh=False):
 def simple_sched_start(year, month, day, hour, minute,sec=0):
     # https://is.gd/Lb9tlf
     target_time = datetime.datetime(year, month, day, hour, minute, sec)
+    print('Waiting to start at:', year, month, day, hour, minute)
     while datetime.datetime.now() < target_time:
         time.sleep(10)
     print('Target time:', year,':', month,':', day,':', hour,':', minute, 'Commencing trading now...\n')

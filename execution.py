@@ -69,7 +69,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         print('total_trade:', pr.total_trade)
         print('pred_delta_threshold:', pr.pred_delta_threshold)
         print('traderecord_interval_refresh:', pr.traderecord_interval_refresh,'\n')
-        setup_check = pag.confirm(text="1) BROWSER WINDOW AT HALF\n 2) AT QUOTE HISTORY?\n 3) ZOOM LEVEL CORRECT?\n 4) CURRENT SYSTEM PARAM?",
+        setup_check = pag.confirm(text="1) BROWSER WINDOW CORRECT?\n 2) AT QUOTE HISTORY?\n 3) ZOOM LEVEL CORRECT?\n 4) CURRENT SYSTEM PARAM?",
                                   title='>>> CHECKLIST <<<')
         if setup_check == 'Cancel':
             print('\nCancelled by user.')
@@ -104,6 +104,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         if diff.total_seconds() < 0:
             print('Time mismatch - Diff of ', diff.total_seconds())
             print('')
+            ut.refresh()
             return 5
     return
 
@@ -251,7 +252,7 @@ def update_time_betw_get_end_and_execution_end(execute_time, start_get_end):
     return
 
 
-@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(3))
+# @te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(3))
 def trade_execution(cycle, trade, total_wins):
 
     if datetime.datetime.now().second < 10:
@@ -261,7 +262,7 @@ def trade_execution(cycle, trade, total_wins):
 
     lookback = pr.lookback_t
     if pr.mlpsvc_datacollect:
-        lookback = random.choice([60,120,180,240])
+        lookback = random.choice([15,60,120,180,240])
 
     # We cross validate for best params. We can take as long as we want here.
     best_param, test_range_center = an.cross_val_trading(lookback_t=lookback)
@@ -279,6 +280,12 @@ def trade_execution(cycle, trade, total_wins):
         print(bp)
     print('')
 
+    if datetime.datetime.now().second < 10:
+        print('Not yet 10 seconds into current minute just before get_one_now. Going on to next iteration.')
+        print('')
+        cycle += 1
+        return 1, cycle, trade, total_wins
+
     # Build + get new data since cross val may have taken some time.
     # Build data up + get one for the duration that build last took
     picklename, get_one_hour, get_one_minute = gq.get_one_now()
@@ -292,9 +299,7 @@ def trade_execution(cycle, trade, total_wins):
     # Load dataframe
     df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = an.lock_and_load(picklename=picklename, lookback=lookback)
     print('Loaded pickle used for prediction for trading ... :', picklename)
-    print('Dataframe Statistics:')
-    print('>>> Time @ first row:', df['time'].iloc[0])
-    print('>>> Time @ last row:', df['time'].iloc[-1])
+    print('Dataframe Statistics:') ; print('>>> Time @ first row:', df['time'].iloc[0]) ; print('>>> Time @ last row:', df['time'].iloc[-1])
     print('')
 
     # Remove all get_one_now.
@@ -411,6 +416,8 @@ if __name__ == '__main__':
         if cycle == 1:
             if checks(cycle, trade_start_chk=True) == 2:
                 break
+            #ut.simple_sched_start(2022, 2, 18, 4, 30)
+            ut.refresh()
 
         # We time our getting of data, do cross val do prediction and execute trade if within NRMSE
         trade_stats = trade_execution(cycle=cycle, trade=trade, total_wins=total_wins)
