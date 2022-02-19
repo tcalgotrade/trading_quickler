@@ -457,10 +457,10 @@ def cross_val_multiproc(params):
     return
 
 
-def get_best_params(test_range, now):
+def get_best_params(lookback_t, now):
     best_param = []
     # [[train, delay, test NRMSE, lookback_t, test, ridge]]
-    for i in range(0, len(test_range)): best_param.append([0,0,1.,0,0,0])
+    for i in range(0, len(lookback_t)): best_param.append([0,0,1.,0,0,0])
     # Open every param pickle file in cross_val folder
     for file in os.listdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_' + pr.current_system + '/'):
         # Load pickle
@@ -470,19 +470,19 @@ def get_best_params(test_range, now):
             #        test nrmse >>> np.around(result, 4), threshold_test_nrmse, lookback_t)
             current_param = pickle.load(f)
         # Init nrmse value for clarity.
-        current_nrmse = current_param[6] ; current_test = current_param[4]
+        current_nrmse = current_param[6] ; current_lookback = current_param[8]
         # Save set of lowest NRMSE for each item in test_range
         # [[train, delay, test NRMSE, lookback_t, test, ridge]]
-        for i in range(0, len(test_range)):
-            if current_nrmse < best_param[i][2] and len(test_range) >= i+1 and current_test == test_range[i]:
+        for i in range(0, len(lookback_t)):
+            if current_nrmse < best_param[i][2] and len(lookback_t) >= i+1 and current_lookback == lookback_t[i]:
                 best_param.pop(i)
                 best_param.insert(i, [current_param[2], current_param[3], current_nrmse, current_param[8],
-                                      current_test, current_param[5]])
+                                      current_param[4], current_param[5]])
 
     return best_param
 
 
-def cross_val_trading(lookback_t):
+def cross_val_trading():
 
     # Get date & time
     start_time = now = datetime.datetime.now()
@@ -510,8 +510,8 @@ def cross_val_trading(lookback_t):
         test_range_center = np.mean(test_range)
     else:
         test_range_center = pr.time_betw_execution_end_and_trade_open + pr.asset_duration + pr.time_betw_get_end_and_execution_end
-        test_range = [test_range_center+0.5]
-    bag_of_params = list(itertools.product([picklename], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, [lookback_t]))
+        test_range = [test_range_center]
+    bag_of_params = list(itertools.product([picklename], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, pr.lookback_t))
     print('# of combinations:', len(bag_of_params))
 
     # Remove contents from last cross_val. We start anew each cross val during trading. No storing of files between cross vals
@@ -524,7 +524,7 @@ def cross_val_trading(lookback_t):
 
     # Find best params. We save the one with lowest test NRMSE
     # [[train, delay, NRMSE, lookback_t, test, ridge]]
-    best_param = get_best_params(test_range=test_range, now=now)
+    best_param = get_best_params(lookback_t=pr.lookback_t, now=now)
 
     if pr.test_cross_val_trading:
         print('Best params')

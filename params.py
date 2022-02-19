@@ -71,7 +71,7 @@ find_pos = False
 position_roll_call = False
 
 # MLP-SVC
-mlpsvc_datacollect = True
+mlpsvc_datacollect = False
 
 # Testing for get_quote
 test_get_one = False
@@ -138,12 +138,12 @@ if test_cross_val_trading:
     threshold_test_nrmse = [1]
 
 else:
-    lookback_t = 240
+    lookback_t = [120,2]
     warm_range = [-1]
     delay_range = range(2,20)
     train_range = [-1]
     ridge_range = [0]
-    threshold_test_nrmse = [1]
+    threshold_test_nrmse = [0.2]
 
 # Trade Execution Params
 lookback_t_min = 2 # Only read by compute() when predicting for trade.
