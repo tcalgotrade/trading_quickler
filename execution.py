@@ -258,7 +258,7 @@ def trade_execution(cycle, trade, total_wins):
     if datetime.datetime.now().second < 10:
         print('Not yet 10 seconds into current minute. Hold on...')
         print('')
-        time.sleep(10-datetime.datetime.now().second)
+        time.sleep(40-datetime.datetime.now().second)
 
     # We cross validate for best params. We can take as long as we want here.
     best_param, test_range_center = an.cross_val_trading()
@@ -276,8 +276,8 @@ def trade_execution(cycle, trade, total_wins):
         print(bp)
     print('')
 
-    if datetime.datetime.now().second < 10:
-        print('Not yet 10 seconds into current minute just before get_one_now. Going on to next iteration.')
+    if datetime.datetime.now().second > 55:
+        print('Exceeded 55 seconds into current minute just before get_one_now. Going on to next iteration.')
         print('')
         cycle += 1
         return 1, cycle, trade, total_wins

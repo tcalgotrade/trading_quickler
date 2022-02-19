@@ -147,7 +147,7 @@ else:
 
 # Trade Execution Params
 lookback_t_min = 2 # Only read by compute() when predicting for trade.
-total_trade = 50
+total_trade = 999999
 pred_delta_threshold = 0
 interval_typew = 0
 traderecord_interval_refresh = 5
