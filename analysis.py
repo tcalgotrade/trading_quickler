@@ -231,9 +231,6 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
     ## NVAR
     ##
 
-    # create an array to hold the linear part of the feature vector, https://is.gd/OaiCHN
-    x = np.zeros((dlin, maxtime_pts), dtype=np.float64)
-
     """ 
     Fill in the linear part of the feature vector for all times
     Colon here used to 'select' a bunch of rows in matric x : i.e 0:2 => select rows 0 and 1, exclude 2
@@ -247,6 +244,8 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
     Is index 0 suppose to be oldest or newest time in data? : oldest
     """
     try:
+        # create an array to hold the linear part of the feature vector, https://is.gd/OaiCHN
+        x = np.zeros((dlin, maxtime_pts), dtype=np.float64)
         for delay in np.arange(k):
             for j in np.arange(delay, maxtime_pts):
                 x[d * delay: d * (delay + 1), j] = consolidated_array[:, j-delay]
