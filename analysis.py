@@ -556,8 +556,8 @@ if __name__ == '__main__':
 
     # Quick test compute
     if pr.test_compute_function:
-        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '14022022/0330', lookback=60, seconds=15, isDebug=True)
-        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=60, k=13,
-                              test=60*30, ridge_param=2.5e-6, isDebug=False, isInfo=True, isTrg=True, isTrading=False)
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename= 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/small_data_files/' + 'get_one_now_1919', lookback=1 , isDebug=True)
+        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=-1, k=3,
+                              test=5, ridge_param=0 , isDebug=False, isInfo=True, isTrg=True, isTrading=False)
         print('Result:', result)
 
