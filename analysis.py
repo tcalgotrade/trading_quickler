@@ -231,9 +231,6 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
     ## NVAR
     ##
 
-    # create an array to hold the linear part of the feature vector, https://is.gd/OaiCHN
-    x = np.zeros((dlin, maxtime_pts), dtype=np.float64)
-
     """ 
     Fill in the linear part of the feature vector for all times
     Colon here used to 'select' a bunch of rows in matric x : i.e 0:2 => select rows 0 and 1, exclude 2
@@ -247,6 +244,8 @@ def compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array,
     Is index 0 suppose to be oldest or newest time in data? : oldest
     """
     try:
+        # create an array to hold the linear part of the feature vector, https://is.gd/OaiCHN
+        x = np.zeros((dlin, maxtime_pts), dtype=np.float64)
         for delay in np.arange(k):
             for j in np.arange(delay, maxtime_pts):
                 x[d * delay: d * (delay + 1), j] = consolidated_array[:, j-delay]
@@ -457,10 +456,10 @@ def cross_val_multiproc(params):
     return
 
 
-def get_best_params(test_range, now):
+def get_best_params(lookback_t, now):
     best_param = []
     # [[train, delay, test NRMSE, lookback_t, test, ridge]]
-    for i in range(0, len(test_range)): best_param.append([0,0,1.,0,0,0])
+    for i in range(0, len(lookback_t)): best_param.append([0,0,1.,0,0,0])
     # Open every param pickle file in cross_val folder
     for file in os.listdir(pr.data_store_location + now.strftime("%d%m%Y") + '/cross_val_' + pr.current_system + '/'):
         # Load pickle
@@ -470,19 +469,19 @@ def get_best_params(test_range, now):
             #        test nrmse >>> np.around(result, 4), threshold_test_nrmse, lookback_t)
             current_param = pickle.load(f)
         # Init nrmse value for clarity.
-        current_nrmse = current_param[6] ; current_test = current_param[4]
+        current_nrmse = current_param[6] ; current_lookback = current_param[8]
         # Save set of lowest NRMSE for each item in test_range
         # [[train, delay, test NRMSE, lookback_t, test, ridge]]
-        for i in range(0, len(test_range)):
-            if current_nrmse < best_param[i][2] and len(test_range) >= i+1 and current_test == test_range[i]:
+        for i in range(0, len(lookback_t)):
+            if current_nrmse < best_param[i][2] and len(lookback_t) >= i+1 and current_lookback == lookback_t[i]:
                 best_param.pop(i)
                 best_param.insert(i, [current_param[2], current_param[3], current_nrmse, current_param[8],
-                                      current_test, current_param[5]])
+                                      current_param[4], current_param[5]])
 
     return best_param
 
 
-def cross_val_trading(lookback_t):
+def cross_val_trading():
 
     # Get date & time
     start_time = now = datetime.datetime.now()
@@ -510,8 +509,8 @@ def cross_val_trading(lookback_t):
         test_range_center = np.mean(test_range)
     else:
         test_range_center = pr.time_betw_execution_end_and_trade_open + pr.asset_duration + pr.time_betw_get_end_and_execution_end
-        test_range = [test_range_center+0.5]
-    bag_of_params = list(itertools.product([picklename], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, [lookback_t]))
+        test_range = [test_range_center]
+    bag_of_params = list(itertools.product([picklename], pr.warm_range, pr.train_range, pr.delay_range, test_range, pr.ridge_range, pr.threshold_test_nrmse, pr.lookback_t))
     print('# of combinations:', len(bag_of_params))
 
     # Remove contents from last cross_val. We start anew each cross val during trading. No storing of files between cross vals
@@ -524,7 +523,7 @@ def cross_val_trading(lookback_t):
 
     # Find best params. We save the one with lowest test NRMSE
     # [[train, delay, NRMSE, lookback_t, test, ridge]]
-    best_param = get_best_params(test_range=test_range, now=now)
+    best_param = get_best_params(lookback_t=pr.lookback_t, now=now)
 
     if pr.test_cross_val_trading:
         print('Best params')
@@ -556,8 +555,8 @@ if __name__ == '__main__':
 
     # Quick test compute
     if pr.test_compute_function:
-        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename=pr.data_store_location + '14022022/0330', lookback=60, seconds=15, isDebug=True)
-        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=60, k=13,
-                              test=60*30, ridge_param=2.5e-6, isDebug=False, isInfo=True, isTrg=True, isTrading=False)
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = lock_and_load(picklename= 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/small_data_files/' + 'get_one_now_1919', lookback=1 , isDebug=True)
+        result = compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=-1, k=3,
+                              test=5, ridge_param=0 , isDebug=False, isInfo=True, isTrg=True, isTrading=False)
         print('Result:', result)
 

@@ -69,7 +69,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         print('total_trade:', pr.total_trade)
         print('pred_delta_threshold:', pr.pred_delta_threshold)
         print('traderecord_interval_refresh:', pr.traderecord_interval_refresh,'\n')
-        setup_check = pag.confirm(text="1) BROWSER WINDOW AT HALF\n 2) AT QUOTE HISTORY?\n 3) ZOOM LEVEL CORRECT?\n 4) CURRENT SYSTEM PARAM?",
+        setup_check = pag.confirm(text="1) BROWSER WINDOW CORRECT?\n 2) AT QUOTE HISTORY?\n 3) ZOOM LEVEL CORRECT?\n 4) CURRENT SYSTEM PARAM?",
                                   title='>>> CHECKLIST <<<')
         if setup_check == 'Cancel':
             print('\nCancelled by user.')
@@ -104,6 +104,7 @@ def checks(trade_params=None, df=None, day_change_chk=False, trade_start_chk=Fal
         if diff.total_seconds() < 0:
             print('Time mismatch - Diff of ', diff.total_seconds())
             print('')
+            ut.refresh()
             return 5
     return
 
@@ -251,7 +252,7 @@ def update_time_betw_get_end_and_execution_end(execute_time, start_get_end):
     return
 
 
-@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(3))
+@te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_fixed(0.5) , stop=te.stop_after_attempt(15))
 def trade_execution(cycle, trade, total_wins):
 
     if datetime.datetime.now().second < 10:
@@ -259,12 +260,8 @@ def trade_execution(cycle, trade, total_wins):
         print('')
         time.sleep(10-datetime.datetime.now().second)
 
-    lookback = pr.lookback_t
-    if pr.mlpsvc_datacollect:
-        lookback = random.choice([60,120,180,240])
-
     # We cross validate for best params. We can take as long as we want here.
-    best_param, test_range_center = an.cross_val_trading(lookback_t=lookback)
+    best_param, test_range_center = an.cross_val_trading()
     print('')
 
     # Check if any params are still default, if so, skip one iteration.
@@ -279,6 +276,12 @@ def trade_execution(cycle, trade, total_wins):
         print(bp)
     print('')
 
+    if datetime.datetime.now().second > 55:
+        print('Exceeded 55 seconds into current minute just before get_one_now. Going on to next iteration.')
+        print('')
+        cycle += 1
+        return 1, cycle, trade, total_wins
+
     # Build + get new data since cross val may have taken some time.
     # Build data up + get one for the duration that build last took
     picklename, get_one_hour, get_one_minute = gq.get_one_now()
@@ -289,31 +292,25 @@ def trade_execution(cycle, trade, total_wins):
     print('>>> Time @ start_get_end:', start_get_end.strftime('%H:%M:%S.%f'))
     print('')
 
-    # Load dataframe
-    df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = an.lock_and_load(picklename=picklename, lookback=lookback)
-    print('Loaded pickle used for prediction for trading ... :', picklename)
-    print('Dataframe Statistics:')
-    print('>>> Time @ first row:', df['time'].iloc[0])
-    print('>>> Time @ last row:', df['time'].iloc[-1])
-    print('')
-
-    # Remove all get_one_now.
-    files = glob.glob(picklename[:-4]+'*')
-    for f in files:
-        os.remove(f)
-
-    # Check current min/sec vs min/sec of last row of dataframe.
-    time_mismatch = 0
-    if checks(df=df, time_mismatch_chk=True) == 5:
-        time_mismatch = 1
-
     # For each set of param in best_param, we do a compute.
+    # Supports multiple results from multiple parameters.
     results = []
+    time_mismatch = 0
     for p in best_param:
+        # Load dataframe
+        df, rows_in_df, cols_in_df, total_var, dt, consolidated_array = an.lock_and_load(picklename=picklename, lookback=p[3])
+        print('Loaded pickle used for prediction for trading ... :', picklename)
+        print('Dataframe Statistics:') ; print('>>> Time @ first row:', df['time'].iloc[0]) ; print('>>> Time @ last row:', df['time'].iloc[-1])
+
+        # Check current min/sec vs min/sec of last row of dataframe.
+        if checks(df=df, time_mismatch_chk=True) == 5:
+            time_mismatch = 1
+
         results.append(
             an.compute_ngrc(rows_in_df, cols_in_df, total_var, dt, consolidated_array, warmup=-1, train=p[0], k=p[1],
                             test=p[4], ridge_param=p[5], isTrg=False, isTrading=True))
     print('*** test_range_center used for trade prediction:', test_range_center)
+    print('')
 
     # Consolidate results. Supports multiple results from multiple parameters.
     action_count = 0
@@ -330,7 +327,8 @@ def trade_execution(cycle, trade, total_wins):
     print('')
 
     action = None
-    direction_agree = 0
+    direction_agree = False
+
     if action_count == 0:
         action = 0
         direction_agree += 1
@@ -338,11 +336,16 @@ def trade_execution(cycle, trade, total_wins):
         action = 1
         direction_agree += 1
 
+    # svc_outcome = mse.svc_trading(consolidated_array)
+    # if svc_outcome[0] == 1:
+    #     action = action_count
+    #     direction_agree = True
+
     # Trade Execution
     if time_mismatch != 1:
         print('Time Match?: YES')
 
-        if action == 1 or action == 0:
+        if direction_agree:
             print('Direction agreement?: YES')
 
             if abs(predicted_delta) > pr.pred_delta_threshold:
@@ -367,16 +370,20 @@ def trade_execution(cycle, trade, total_wins):
 
                 # Save datapoint, post-trade for MLP-SVC exploration.
                 if pr.mlpsvc_datacollect and len(best_param) == 1:
-                    mse.data_collection(consolidated_array, np.arange(2,120,1), action, predicted_delta, best_param[0][2], best_param[0][1],
-                                        test_range_center, lookback, won)
+                    mse.data_collection(consolidated_array, np.arange(2,60,1), won)
 
     # Output why we did not take action.
     if time_mismatch == 1:
-        print('No execution - Time Match?: NOS')
-    if direction_agree == 0:
+        print('No execution - Time Match?: NO')
+    if not direction_agree:
         print('No execution - Direction agreement?: NO')
     if abs(predicted_delta) < pr.pred_delta_threshold:
         print('No execution - pred_delta_threshold met?: NO')
+
+    # Remove all get_one_now.
+    files = glob.glob(picklename[:-4]+'*')
+    for f in files:
+        os.remove(f)
 
     # Check if traded enough. Stop when total trade is reached or break even.
     # 1/(p+1) is the minimum win fraction to break even at p payout.
@@ -384,8 +391,8 @@ def trade_execution(cycle, trade, total_wins):
     if trade == pr.total_trade or total_wins > 1/(pr.payout+1) * trade:
         end(cycle,trade, total_wins)
         return -1, cycle, trade, total_wins
-
     print('')
+
     # Go onto next cycle.
     cycle += 1
     return 0 , cycle, trade, total_wins
@@ -404,8 +411,8 @@ if __name__ == '__main__':
 
         # Check to see if we are close to change of day.
         if checks(day_change_chk=True) == 1:
-            # Sleep for few minutes for data to build up.
-            time.sleep((pr.lookback_t+1)*60)
+            # Sleep for data to build up.
+            time.sleep((pr.lookback_t+2)*60)
             # Change date by refreshing.
             ut.refresh()
         if cycle == 1:
