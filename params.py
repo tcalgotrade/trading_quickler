@@ -64,7 +64,7 @@ if current_system == 'z400':
 
 # Data file location
 # data_store_location = '//DESKTOP-RESTED/data/'
-data_store_location = '//DESKTOP-1H8M40J/data'
+data_store_location = '//DESKTOP-1H8M40J/data/'
 
 
 # Print coordinate of mouse position
