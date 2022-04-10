@@ -45,6 +45,7 @@ def mouse_pos_roll_call():
 if pr.position_roll_call:
     mouse_pos_roll_call()
 
+
 def show_keys():
     return print(pag.KEYBOARD_KEYS)
 
@@ -166,8 +167,23 @@ def refresh():
     return
 
 
+def update_hour_now():
+    """"
+    Function
+    Take current time (hour), clicks on hour field as dictated by params, and keys in current hour
+    """
+    current_hour = datetime.datetime.now().strftime('%H')
+    # Click on Olymptrade Hour, last digit
+    pag.click(x=pr.olymp_hr[0], y=pr.olymp_hr[1])
+    pag.typewrite(['backspace', 'backspace'], interval=pr.interval_typew)
+    pag.typewrite([current_hour[0], current_hour[1]], interval=pr.interval_typew)
+    return
+
+
 def date_changer():
-    """" Only changes to one day. Each calendar month is different """
+    """"
+    Only changes to day of one hard coded position. Each calendar month is different
+    """
     pag.moveTo(x=pr.click_start[0], y=pr.click_start[1])
     pag.typewrite(['home'], interval=0.5)
     pag.click(x=pr.olymp_date[0], y=pr.olymp_date[1])

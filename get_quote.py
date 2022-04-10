@@ -8,26 +8,8 @@ import utility as ut
 import tenacity as te
 
 
-def olymptrade_update_hour_now(interval=pr.interval_typew):
-    """"
-    Input
-    interval time for typewrite operation. We use default in params but this can be overwritten.
-
-    Function
-    Take current time (hour), clicks on hour filed as dictated by params, and keys in current hour
-    """
-    current_hour = datetime.datetime.now().strftime('%H')
-    hour_front = current_hour[0]
-    hour_back = current_hour[1]
-    # Click on Olymptrade Hour, last digit
-    pag.click(x=pr.olymp_hr[0], y=pr.olymp_hr[1])
-    pag.typewrite(['backspace', 'backspace'], interval=pr.interval_typew)
-    pag.typewrite([hour_front])
-    pag.typewrite([hour_back], interval=pr.interval_typew)
-    return
-
 @te.retry(retry=te.retry_if_exception_type(Exception), wait=te.wait_exponential(multiplier=1, min=0.1, max=0.5) , stop=te.stop_after_attempt(10))
-def olymptrade_time_and_quote(hour, minute, interval_price_wait=pr.quote_interval_pricewait):
+def quote(hour, minute, interval_price_wait=pr.quote_interval_pricewait):
     """
     Input
     hour_front, hour_back, min_front, min_back : expects to be string or integer, time of quote that you want from Olymptrade
@@ -37,7 +19,7 @@ def olymptrade_time_and_quote(hour, minute, interval_price_wait=pr.quote_interva
     Function
     Take hour and minute given, key in hour then minute, using CTRL+A and tab. This is the fastest tested.
     Wait for some time for data to show, then CTRL+A to select all and copy whatever is on screen to system clipboard.
-    Get from clipboard, clean_get , then check the timings to make sure it cohere with now.
+    Get from clipboard, clean_quote , then check the timings to make sure it cohere with now.
     Position of clicks taken from params file. Will change depending on browser used, zoom level, window position.
 
     Using Tenacity lib, this is function is retried a number of times, as specified in the decorator above it.
@@ -63,7 +45,7 @@ def olymptrade_time_and_quote(hour, minute, interval_price_wait=pr.quote_interva
 
     pag.typewrite([minute[0], minute[1]], interval=interval_price_wait)
 
-    # Instead of dragging, we click, select all and leave it to lock_and_load func to clean up.
+    # Instead of dragging, we click, select all and copy
     pag.click(x=pr.click_start[0], y=pr.click_start[1])
     pag.hotkey('ctrl', 'a')
     pag.hotkey('ctrl', 'c')
@@ -72,15 +54,16 @@ def olymptrade_time_and_quote(hour, minute, interval_price_wait=pr.quote_interva
     data = Tk().clipboard_get()
 
     # We filter out unwanted bits
-    data = clean_get(data)
+    data = clean_quote(data)
 
-    # Check that timing from what we got is what we want.
+    # Sanity check that timing from what we got is the time that we want.
     if data[4:6] != minute:
         raise Exception
 
     return data
 
-def clean_get(data):
+
+def clean_quote(data):
     """
     Input
     data is expected to be string due to use of string search methods here.
@@ -109,7 +92,7 @@ def clean_get(data):
 def get_one_now():
     """"
     Function
-    Take current time now, then execute a olymptrade_time_and_quote()
+    Take current time now, then execute a quote()
     Check if we're testing. If so, we take time from params.
     Check if folder today is created. If not, we create it.
     Get string from clipboard after the copy.
@@ -140,14 +123,13 @@ def get_one_now():
         hour = pr.test_hour
         minute = pr.test_minute
 
-    data = olymptrade_time_and_quote(hour=hour, minute=minute)
+    data = quote(hour=hour, minute=minute)
 
     picklename = pr.data_store_location+date+'/get_one_now_'+hour+minute
 
     # Save it.
     with open(picklename, 'wb') as f:
         pickle.dump(data, f)
-
 
     if pr.test_cross_val_trading and pr.test_cross_val_past:
         return picklename, int(pr.test_hour), int(pr.test_second), int(pr.test_second)
@@ -166,7 +148,7 @@ def get_some(hours_list, minutes_list):
     Function
     Check date and create folder for the day.
     Since we have integers coming in, we convert them to string. We need "01" in string when given int of 1.
-    Then we iterate through the given list to get quote.
+    Then we iterate through the given list to get whole bunch of quote, as opposed to just one.
 
     """
     # Get date
@@ -184,7 +166,7 @@ def get_some(hours_list, minutes_list):
 
         for minute in minutes_list[i]:
             _, minute = ut.stringify_hour_min(minute=minute)
-            data = olymptrade_time_and_quote(hour=hour, minute=minute)
+            data = quote(hour=hour, minute=minute)
 
             # Save it.
             with open(pr.data_store_location+date+'/'+hour+minute, 'wb') as f:
@@ -209,7 +191,7 @@ def build_dataset_last_t_minutes(t=1):
     current_hour = now.hour ; current_minute = now.minute
 
     if pr.test_cross_val_trading and pr.test_cross_val_past:
-        current_hour = int(pr.test_hour); current_minute = int(pr.test_minute); current_sec = int(pr.test_second)
+        current_hour = int(pr.test_hour); current_minute = int(pr.test_minute)
 
     hours , minutes = ut.hour_min_to_list_t(current_hour, current_minute, t=t)
     get_some(hours_list=hours, minutes_list=minutes)
