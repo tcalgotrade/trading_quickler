@@ -63,8 +63,9 @@ if current_system == 'z400':
     quote_interval_pricewait = 1.5
 
 # Data file location
-# data_store_location = 'C:/Users/sar02/OneDrive/ML-Data-Stats/trading_quickler/data/training/'
-data_store_location = '//DESKTOP-RESTED/data/'
+# data_store_location = '//DESKTOP-RESTED/data/'
+data_store_location = '//DESKTOP-1H8M40J/data/'
+
 
 # Print coordinate of mouse position
 find_pos = False
